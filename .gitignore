@@ -1,9 +1,6 @@
 node_modules/
 .DS_Store
 
-# Local-only notes and requirements. Never commit: this repo is public.
-.private/
-
-# Backups exported from the app contain personal data.
+# Backups exported from the app.
 rto-backup-*.json
 *.backup.json

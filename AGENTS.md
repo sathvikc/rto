@@ -2,11 +2,6 @@
 
 Guidance for AI coding agents working in this repository.
 
-## Before you start
-
-- If `.private/REQUIREMENTS.md` exists, read it first. It holds the product requirements and decision log. It is gitignored and must never be committed, quoted into tracked files, or pasted into issues or PRs.
-- This repository is public. Never commit personal data: real timesheet rows, backups (`rto-backup-*.json`), employer names, or screenshots containing data. Test fixtures must be synthetic (see `tests/helpers.js`).
-
 ## What this is
 
 A static, offline-first PWA. There is no backend and no build step: the browser loads `index.html`, the stylesheets in `src/styles/` and the ES modules in `src/js/` directly, and GitHub Pages serves the repository as-is. Node is used only for development tooling.
@@ -83,4 +78,4 @@ Version 2.4.0, vendored unminified (the files share one reactive kernel). Read t
 ## Commits and PRs
 
 - Small, focused commits with imperative subjects.
-- Don't commit `.private/`, backups, `node_modules/` or generated files.
+- Don't commit exported backups (`rto-backup-*.json`), real data, `node_modules/` or generated files. Test fixtures are synthetic (`tests/helpers.js`).

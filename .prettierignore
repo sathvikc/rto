@@ -2,4 +2,3 @@ vendor/
 types/
 node_modules/
 package-lock.json
-.private/
