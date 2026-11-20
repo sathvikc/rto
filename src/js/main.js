@@ -1,4 +1,4 @@
-/** Entry point: load data, mount views, start the clock, register the service worker. */
+/** Entry point: load data, mount views, start the clock, set up offline and updates. */
 import { batch } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { toDateKey } from "./domain/dates.js";
@@ -8,6 +8,7 @@ import { listenForActions } from "./ui/actions.js";
 import { setUpDialogs } from "./ui/dialogs.js";
 import { setUpTabs } from "./ui/tabs.js";
 import { setUpTheme } from "./ui/theme.js";
+import { setUpUpdates } from "./ui/updates.js";
 import { mountAlerts } from "./ui/views/alerts.js";
 import { mountCharts } from "./ui/views/charts.js";
 import { mountDayDialog } from "./ui/views/day-dialog.js";
@@ -31,12 +32,6 @@ function tick() {
 
     if (ui.today !== today) ui.today = today;
   });
-}
-
-function registerServiceWorker() {
-  if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
-
-  navigator.serviceWorker.register("sw.js").catch((error) => console.warn("Service worker registration failed", error));
 }
 
 async function start() {
@@ -85,7 +80,7 @@ async function start() {
     window.removeEventListener("pagehide", onPageHide);
   });
 
-  registerServiceWorker();
+  app.add(setUpUpdates());
 }
 
 start().catch((error) => console.error("RTO failed to start", error));

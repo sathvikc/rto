@@ -52,7 +52,7 @@ export const data = state(initialData);
  * @typedef {"home" | "history" | "settings"} Tab
  * @typedef {"week" | "month" | "all"} HistoryFilter
  * @typedef {"month" | "year"} ChartGroup
- * @typedef {"undo" | "adjust"} ToastAction
+ * @typedef {"undo" | "adjust" | "reload"} ToastAction
  *
  * @typedef {object} UiState
  * @property {Tab} tab
@@ -153,12 +153,13 @@ export async function loadState() {
 let toastTimer;
 
 /**
- * Show a short message, optionally with Undo / Adjust buttons (which stay
- * longer, so there is time to tap them).
+ * Show a short message, optionally with action buttons (which stay longer,
+ * so there is time to tap them).
  * @param {string} message
  * @param {ToastAction[]} [actions]
+ * @param {number} [durationMs]  Override how long it stays.
  */
-export function toast(message, actions = []) {
+export function toast(message, actions = [], durationMs) {
   batch(() => {
     ui.toast = message;
     ui.toastActions = actions;
@@ -166,7 +167,7 @@ export function toast(message, actions = []) {
 
   clearTimeout(toastTimer);
 
-  toastTimer = setTimeout(dismissToast, actions.length ? TOAST_WITH_ACTIONS_MS : TOAST_MS);
+  toastTimer = setTimeout(dismissToast, durationMs ?? (actions.length ? TOAST_WITH_ACTIONS_MS : TOAST_MS));
 }
 
 export function dismissToast() {

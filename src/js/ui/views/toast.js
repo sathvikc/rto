@@ -10,7 +10,7 @@ import { registerActions } from "../actions.js";
 import { byId, html, render } from "../dom.js";
 import { openPunchDialog } from "./punch-dialog.js";
 
-const LABELS = { undo: "Undo", adjust: "Adjust" };
+const LABELS = { undo: "Undo", adjust: "Adjust", reload: "Reload" };
 
 export function mountToast() {
   const group = createCleanupGroup();
@@ -47,6 +47,7 @@ export function mountToast() {
 
   registerActions({
     "toast-undo": () => undoLastPunch(),
+    "toast-reload": () => location.reload(),
     "toast-adjust": () => {
       dismissToast();
       openPunchDialog(model.openDay ? "start" : "end");
