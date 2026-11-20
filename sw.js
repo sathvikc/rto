@@ -11,7 +11,7 @@
  *
  * Bump CACHE_NAME on every release that changes shipped files.
  */
-const CACHE_NAME = "rto-v6";
+const CACHE_NAME = "rto-v7";
 
 const APP_SHELL = [
   "./",

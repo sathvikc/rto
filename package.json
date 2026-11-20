@@ -1,6 +1,6 @@
 {
   "name": "rto",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
   "description": "Return to office: track office days and hours. A static, offline-first PWA.",
   "license": "MIT",

@@ -19,13 +19,14 @@ Screenshots use generated demo data.
 ## Features
 
 - **One-tap punches** with a live clock. Forgot to clock in or out? Set the time instead. Every punch can be undone or adjusted from the confirmation.
-- **Leave-by guide** while you're on the clock: what the timesheet shows if you leave now, when the next quarter hour gets credited, and when you'll be on pace for the month.
+- **Leave-by table** while you're on the clock: leave now, on pace for the month, or after a full day, with today's timesheet hours and your month average for each.
 - **Forgotten clock-out guard**: a shift left open overnight asks when you left instead of becoming a 20-hour day.
 - **Quick day entry** with Today/Yesterday, your usual times in one tap, and extras (PTO, timesheet, note) tucked under More.
 - **Day types:** Office, WFH, OOO and Sick.
 - **Your entry vs. the official timesheet.** Office days can hold both. Unverified days are marked `*`; a **Matches? / ✓ Matched** toggle on each card (and a weekly review sheet) confirms them. WFH, OOO and Sick days count as verified automatically.
 - **Rounding rules** on a 15-minute grid: Down, Up, Nearest, None, or Custom with a grace window. A **rounding check** shows how well the rules predict the timesheet.
-- **Company holidays**, skipped for workdays left and presence.
+- **Company holidays**, kept per year and skipped for workdays left and presence.
+- **Frozen past months**: once the timesheet covers a month, its numbers stay as they were even if holidays or settings change later (recalculate on demand).
 - **Home / History / Settings tabs.** Home shows today and the current month (average, presence, the average still needed). History has any month's stats, charts and the day list.
 - **Verified only** view in History: the month's numbers from timesheet-confirmed days, up to the date the latest timesheet covers, to compare with the official dashboard.
 - **How it works** help in Settings.

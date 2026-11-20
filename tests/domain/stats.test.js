@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
 import { isVerified } from "../../src/js/domain/days.js";
-import { combineStats, monthlyStats, neededAverage, workdaysLeft, workdaysLeftDates } from "../../src/js/domain/stats.js";
+import {
+  combineStats,
+  freezeClosedMonths,
+  monthlyStats,
+  neededAverage,
+  workdaysLeft,
+  workdaysLeftDates,
+} from "../../src/js/domain/stats.js";
+import { groupEnd } from "../../src/js/domain/dates.js";
 import { office, plain } from "../helpers.js";
 
 const settings = DEFAULT_SETTINGS;
@@ -120,4 +128,44 @@ test("dashboard view: verified days up to the timesheet coverage, presence count
 
   // Week of Nov 15 only: Mon-Fri = 5 weekdays, 2 verified present.
   assert.deepEqual([st.counted, st.present, st.denom, st.presencePct], [2, 2, 5, 40]);
+});
+
+describe("freezeClosedMonths", () => {
+  const days = [office("2026-10-05", "09:00", "17:00"), office("2026-11-02", "09:00", "17:00")];
+  const holidays = [{ date: "2026-10-06", name: "" }];
+  const coverage = "2026-11-13"; // October (tracking month ends Sat Oct 31) is closed; November is not.
+
+  test("a closed month keeps its snapshot when holidays or settings change", () => {
+    const first = freezeClosedMonths(monthlyStats(days, [], settings, "2026-11-13"), days, settings, coverage, {});
+    const oct = first.stats.find((s) => s.key === "2026-10");
+
+    assert.ok(first.snapshots["tracking:2026-10"]);
+    assert.equal(first.snapshots["tracking:2026-11"], undefined);
+
+    // Add a holiday in October: the live number changes, the frozen one doesn't.
+    const live = monthlyStats(days, holidays, settings, "2026-11-13");
+
+    assert.notEqual(live.find((s) => s.key === "2026-10")?.presencePct, oct?.presencePct);
+
+    const again = freezeClosedMonths(live, days, settings, coverage, first.snapshots);
+
+    assert.deepEqual(
+      again.stats.find((s) => s.key === "2026-10"),
+      oct,
+    );
+  });
+
+  test("editing a day in a closed month recalculates it", () => {
+    const first = freezeClosedMonths(monthlyStats(days, [], settings, "2026-11-13"), days, settings, coverage, {});
+    const edited = [office("2026-10-05", "09:00", "18:00"), days[1]];
+    const again = freezeClosedMonths(monthlyStats(edited, [], settings, "2026-11-13"), edited, settings, coverage, first.snapshots);
+
+    assert.equal(again.stats.find((s) => s.key === "2026-10")?.avg, 9);
+  });
+
+  test("groupEnd: tracking month ends on the Saturday of its last week", () => {
+    assert.equal(groupEnd("2026-11", "tracking"), "2026-12-05");
+    assert.equal(groupEnd("2026-10", "tracking"), "2026-10-31");
+    assert.equal(groupEnd("2026-11", "calendar"), "2026-11-30");
+  });
 });

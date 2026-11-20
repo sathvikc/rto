@@ -43,6 +43,10 @@
     flex-wrap: nowrap;
   }
 
+  .cluster--end {
+    justify-content: flex-end;
+  }
+
   .cluster--top {
     align-items: flex-start;
   }

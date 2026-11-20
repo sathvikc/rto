@@ -70,3 +70,18 @@ export function startOfWeekMonday(key) {
 export function groupKey(key, grouping) {
   return (grouping === "calendar" ? key : startOfWeekSunday(key)).slice(0, 7);
 }
+
+/**
+ * Last date that belongs to a group month. A tracking month ends on the
+ * Saturday of the last week that starts (Sunday) inside the month.
+ * @param {string} monthKey "YYYY-MM"
+ * @param {Grouping} grouping
+ */
+export function groupEnd(monthKey, grouping) {
+  const [y, m] = monthKey.split("-").map(Number);
+  const lastOfMonth = toDateKey(new Date(y, m, 0));
+
+  if (grouping === "calendar") return lastOfMonth;
+
+  return addDays(startOfWeekSunday(lastOfMonth), 6);
+}

@@ -12,6 +12,7 @@ import {
   eraseEverything,
   flush,
   importBackup,
+  recalculatePastMonths,
   markExported,
   setHolidays,
   toast,
@@ -106,6 +107,7 @@ export function mountSettings() {
     holidayMessage: "",
     holidaySummary: "",
     holidayYear: "",
+    frozenInfo: "",
     backupInfo: "",
     storageInfo: "",
     versionInfo: `RTO ${APP_VERSION}`,
@@ -289,6 +291,14 @@ export function mountSettings() {
     target.removeEventListener("keydown", blurOnEnter);
   });
 
+  group.add(
+    effect(() => {
+      const ids = Object.keys(data.snapshots).filter((id) => id.startsWith(`${data.settings.grouping}:`));
+
+      view.frozenInfo = ids.length ? `${plural(ids.length, "month")} frozen.` : "No months frozen yet.";
+    }),
+  );
+
   async function exportBackup() {
     const name = backupFileName(new Date());
     const file = new File([backupJson()], name, { type: "application/json" });
@@ -380,6 +390,10 @@ export function mountSettings() {
       view.holidayText = holidaysToText(holidaysOf(year));
       view.holidayMessage = invalid ? `${plural(invalid, "line")} not understood (use YYYY-MM-DD Name).` : "";
       toast(`Saved ${plural(holidaysOf(year).length, "holiday")} for ${year}`);
+    },
+    recalculate: () => {
+      if (window.confirm("Recalculate every past month with today's holidays and settings? Their numbers may change."))
+        recalculatePastMonths();
     },
     export: exportBackup,
     import: () => importInput.click(),

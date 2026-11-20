@@ -16,10 +16,30 @@ describe("parseImport", () => {
   test("round-trips this app's backup", () => {
     const days = [office("2026-11-16", "08:58", "16:20")];
 
+    const snapshots = {
+      "tracking:2026-10": {
+        hash: "5:abc",
+        stat: {
+          key: "2026-10",
+          total: 40,
+          counted: 5,
+          avg: 8,
+          present: 5,
+          denom: 5,
+          wfh: 0,
+          presencePct: 100,
+          unverified: 0,
+          unverifiedAvg: 0,
+          partial: false,
+        },
+      },
+    };
+
     const backup = buildBackup({
       days,
       holidays: [{ date: "2026-11-26", name: "Thanksgiving" }],
       settings: DEFAULT_SETTINGS,
+      snapshots,
       createdAt: null,
     });
 
@@ -28,6 +48,7 @@ describe("parseImport", () => {
     assert.deepEqual(parsed.days, days);
     assert.equal(parsed.holidays.length, 1);
     assert.deepEqual(parsed.settings.roundOut, DEFAULT_SETTINGS.roundOut);
+    assert.deepEqual(parsed.snapshots, snapshots);
   });
 
   test("flat rows: timesheet rows verified, punches unverified with raw times", () => {
@@ -116,4 +137,13 @@ test("import merge: the file wins on the same date, other local days are kept", 
 test("backup file name has the local date and time", () => {
   assert.equal(backupFileName(new Date(2026, 10, 20, 15, 32)), "rto-backup-2026-11-20-1532.json");
   assert.equal(backupFileName(new Date(2026, 0, 5, 9, 4)), "rto-backup-2026-01-05-0904.json");
+});
+
+test("malformed snapshots are dropped on import", () => {
+  const parsed = parseImport({
+    days: [],
+    snapshots: { "tracking:2026-10": { hash: 1 }, "weekly:2026-10": {}, "calendar:2026-09": { hash: "x", stat: { key: "2026-09" } } },
+  });
+
+  assert.deepEqual(parsed.snapshots, {});
 });

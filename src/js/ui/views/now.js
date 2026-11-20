@@ -9,7 +9,7 @@ import { classToggle, show } from "lume-js/handlers";
 import { STATUS_LABEL } from "../../domain/constants.js";
 import { isWeekday, toDateKey } from "../../domain/dates.js";
 import { resolveDay } from "../../domain/days.js";
-import { leavePlan } from "../../domain/shift.js";
+import { leaveRows } from "../../domain/shift.js";
 import { toMinutes } from "../../domain/time.js";
 import { formatClock, formatDay, formatHours, formatLongDate, formatTime } from "../../lib/format.js";
 import { model } from "../../state/model.js";
@@ -123,36 +123,60 @@ export function mountNow() {
       }
 
       const overnight = openDay.date === toDateKey(now) ? 0 : 1440;
-      const p = leavePlan(start, minutesOf(now) + overnight, settings, needed ?? settings.target);
+      const stat = model.currentStat;
 
-      if (!p) {
+      const { rows, next } = leaveRows(start, minutesOf(now) + overnight, settings, {
+        stat,
+        paceHours: needed,
+        targetHours: settings.target,
+      });
+
+      if (!rows.length) {
         plan.markup = "";
 
         return;
       }
 
-      const showNext = p.next && p.next.out !== p.now.out && (!p.goal || p.next.at !== p.goal.at);
+      const currentAvg = stat?.avg ?? null;
 
-      plan.markup = html`<p class="leave-plan__head">If you leave… <span>timesheet out · hours</span></p>
-        <p class="leave-plan__row">
-          <span class="text-dim">Now</span>
-          <span>${formatTime(p.now.out)} · <strong>${formatHours(p.now.hours)}</strong></span>
-        </p>
-        ${
-          showNext &&
-          p.next &&
-          html`<p class="leave-plan__row">
-            <span class="text-dim">At ${formatTime(p.next.at)}+</span>
-            <span>${formatTime(p.next.out)} · <strong>${formatHours(p.next.hours)}</strong></span>
-          </p>`
-        }
-        ${
-          p.goal &&
-          html`<p class="leave-plan__row leave-plan__row--goal">
-            <span>At ${formatTime(p.goal.at)}+ for ${formatHours(needed ?? settings.target, 1)} pace</span>
-            <span>${formatTime(p.goal.out)} · <strong>${formatHours(p.goal.hours)}</strong></span>
-          </p>`
-        }`.value;
+      /** @param {import("../../domain/shift.js").LeaveRow} row */
+      const label = (row) =>
+        row.kinds
+          .map((k) =>
+            k === "now" ? "Now" : k === "pace" ? `On pace (${formatHours(needed, 1)})` : `Full ${formatHours(settings.target)} day`,
+          )
+          .join(" · ");
+
+      /** @param {number} avg */
+      const trend = (avg) => (currentAvg === null ? "" : avg > currentAvg + 0.005 ? "▲" : avg < currentAvg - 0.005 ? "▼" : "");
+
+      plan.markup = html`<div class="leave-plan__head">
+          <span>If you leave…</span>
+          <span>Month avg now <strong>${currentAvg === null ? "—" : formatHours(currentAvg, 2)}</strong></span>
+        </div>
+        <table class="leave-table">
+          <thead>
+            <tr>
+              <th scope="col">Leave</th>
+              <th scope="col">Today</th>
+              <th scope="col">Month avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(
+              (row) =>
+                html`<tr class="${row.kinds.includes("now") ? "" : "leave-table__goal"}">
+                  <th scope="row">
+                    <strong>${row.kinds.includes("now") ? formatClock(now) : formatTime(row.at)}</strong>
+                    <span>${label(row)} · out ${formatTime(row.out)}</span>
+                  </th>
+                  <td>${formatHours(row.hours)}</td>
+                  <td>${formatHours(row.average, 2)} <span class="leave-table__trend">${trend(row.average)}</span></td>
+                </tr>`,
+            )}
+          </tbody>
+        </table>
+        ${next && html`<p class="leave-plan__tip">Leave after ${formatTime(next.at)} and the timesheet rounds up to ${formatTime(next.out)} (${formatHours(next.hours)}).</p>`}`.value;
     }),
   );
 

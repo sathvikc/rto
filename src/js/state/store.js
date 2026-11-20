@@ -7,7 +7,7 @@
  * Lume tracks top-level keys only, so arrays and objects are always
  * replaced, never mutated in place.
  */
-/** @import { Day, DayStatus, Entry, Holiday, Settings } from "../domain/types.js" */
+/** @import { Day, DayStatus, Entry, Holiday, MonthSnapshots, Settings } from "../domain/types.js" */
 /** @import { PersistState, SaveTarget } from "./persistence.js" */
 import { batch, effect, state } from "lume-js";
 import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js";
@@ -28,6 +28,7 @@ const TOAST_WITH_ACTIONS_MS = 6000;
  * @property {Day[]} days  Newest first.
  * @property {Holiday[]} holidays
  * @property {Settings} settings
+ * @property {MonthSnapshots} snapshots  Frozen stats of closed months.
  * @property {string | null} lastExportAt
  * @property {string | null} createdAt
  * @property {SaveTarget | ""} storage
@@ -40,6 +41,7 @@ const initialData = {
   days: [],
   holidays: [],
   settings: { ...DEFAULT_SETTINGS },
+  snapshots: {},
   lastExportAt: null,
   createdAt: null,
   storage: "",
@@ -113,6 +115,7 @@ effect(() => {
     days: data.days,
     holidays: data.holidays,
     settings: data.settings,
+    snapshots: data.snapshots,
     lastExportAt: data.lastExportAt,
     createdAt: data.createdAt,
   };
@@ -141,6 +144,7 @@ export async function loadState() {
   data.days = newestFirst((parsed?.days ?? []).map((d) => unverifyFuture(d, toDateKey(new Date()))));
   data.holidays = parsed?.holidays ?? [];
   data.settings = { ...DEFAULT_SETTINGS, ...(parsed?.settings ?? {}) };
+  data.snapshots = parsed?.snapshots ?? {};
   data.lastExportAt = typeof meta?.lastExportAt === "string" ? meta.lastExportAt : null;
   data.createdAt = typeof meta?.createdAt === "string" ? meta.createdAt : new Date().toISOString();
   data.loaded = true;
@@ -409,6 +413,12 @@ export function updateSettings(patch) {
   data.settings = { ...data.settings, ...patch };
 }
 
+/** Drop all frozen months so they're recalculated with today's settings. */
+export function recalculatePastMonths() {
+  data.snapshots = {};
+  toast("Past months recalculated");
+}
+
 /** @param {Holiday[]} list */
 export function setHolidays(list) {
   data.holidays = list;
@@ -459,6 +469,9 @@ export function importBackup(json) {
 
   updateSettings(imp.settings);
 
+  // The file's frozen months win too.
+  if (Object.keys(imp.snapshots).length) data.snapshots = { ...data.snapshots, ...imp.snapshots };
+
   return { added: merged.added, replaced: merged.replaced, holidays: imp.holidays.length, skipped: imp.skipped };
 }
 
@@ -467,6 +480,7 @@ export async function eraseEverything() {
   data.days = [];
   data.holidays = [];
   data.settings = { ...DEFAULT_SETTINGS };
+  data.snapshots = {};
   data.lastExportAt = null;
   await flush();
 }

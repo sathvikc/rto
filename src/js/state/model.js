@@ -11,7 +11,7 @@ import { batch, effect, state } from "lume-js";
 import { groupKey } from "../domain/dates.js";
 import { isOpen, isVerified, needsVerification } from "../domain/days.js";
 import { isStaleShift, usualTimes } from "../domain/shift.js";
-import { monthlyStats, neededAverage, workdaysLeftDates } from "../domain/stats.js";
+import { freezeClosedMonths, monthlyStats, neededAverage, workdaysLeftDates } from "../domain/stats.js";
 import { timesheetCoverage } from "../domain/verification.js";
 import { data, ui } from "./store.js";
 
@@ -73,13 +73,21 @@ effect(() => {
 
   if (!loaded) return;
 
-  const stats = monthlyStats(days, holidays, settings, today);
+  const coverage = timesheetCoverage(today, settings.releaseDay);
+
+  // Closed months (fully covered by the timesheet) show their frozen
+  // snapshot, so later changes to holidays or settings don't rewrite them.
+  // Writing the snapshots back re-runs this effect once; the second run
+  // finds nothing new and stops.
+  const frozen = freezeClosedMonths(monthlyStats(days, holidays, settings, today), days, settings, coverage, data.snapshots);
+
+  if (JSON.stringify(frozen.snapshots) !== JSON.stringify(data.snapshots)) data.snapshots = frozen.snapshots;
+
+  const stats = frozen.stats;
 
   // History's "Verified only" view mirrors the official dashboard: verified
   // days (WFH/OOO/Sick count as verified) up to the date the latest
   // timesheet covers, with presence counted only up to that date.
-  const coverage = timesheetCoverage(today, settings.releaseDay);
-
   const verifiedStats = monthlyStats(
     days.filter((d) => d.date <= coverage && isVerified(d)),
     holidays,

@@ -64,12 +64,21 @@
  * @property {number} unverifiedAvg  ...of which are in the average.
  * @property {boolean} partial       The month containing today.
  *
+ * @typedef {object} MonthSnapshot
+ *   A closed month's stats, frozen. Recomputed only when that month's days
+ *   change (detected by `hash`), not when settings or holidays change.
+ * @property {string} hash  Fingerprint of the month's day records.
+ * @property {MonthStat} stat
+ *
+ * @typedef {Record<string, MonthSnapshot>} MonthSnapshots  Keyed "grouping:YYYY-MM".
+ *
  * @typedef {object} Backup
  * @property {"rto"} app
  * @property {number} version
  * @property {Day[]} days
  * @property {Holiday[]} holidays
  * @property {Settings} settings
+ * @property {MonthSnapshots} [snapshots]
  * @property {string | null} [createdAt]
  * @property {string | null} [lastExportAt]
  * @property {string} [exportedAt]

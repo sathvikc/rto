@@ -1,5 +1,5 @@
-/** @import { Day, Holiday, MonthStat, Settings } from "./types.js" */
-import { addDays, groupKey, isWeekday, startOfWeekSunday } from "./dates.js";
+/** @import { Day, Holiday, MonthSnapshots, MonthStat, Settings } from "./types.js" */
+import { addDays, groupEnd, groupKey, isWeekday, startOfWeekSunday } from "./dates.js";
 import { countsInAverage, isOpen, presenceOf, resolveDay } from "./days.js";
 
 /** Longest a tracking month can run past its calendar month's 1st, days. */
@@ -187,4 +187,74 @@ export function combineStats(stats) {
     avg: sum.counted ? sum.total / sum.counted : null,
     presencePct: sum.denom ? Math.min(100, Math.round((sum.present / sum.denom) * 100)) : null,
   };
+}
+
+/**
+ * Cheap, stable fingerprint of a month's day records (djb2 over JSON).
+ * @param {Day[]} days  The month's days.
+ */
+export function monthHash(days) {
+  const text = JSON.stringify([...days].sort((a, b) => a.date.localeCompare(b.date)).map((d) => [d.date, d.status, d.recorded, d.actual]));
+
+  let hash = 5381;
+
+  for (let i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+
+  return `${days.length}:${(hash >>> 0).toString(36)}`;
+}
+
+/**
+ * Freeze closed months. A month is closed once the timesheet covers its
+ * last day. Its first computed stats are kept as a snapshot and shown from
+ * then on, so later changes to holidays, rounding or other settings don't
+ * rewrite history. Editing a day in that month (its hash changes)
+ * recalculates and re-freezes it.
+ *
+ * @param {MonthStat[]} live      Stats computed from current data and settings.
+ * @param {Day[]} days
+ * @param {Settings} settings
+ * @param {string} coverage       Last date the latest timesheet covers.
+ * @param {MonthSnapshots} snapshots
+ * @returns {{ stats: MonthStat[], snapshots: MonthSnapshots }}
+ */
+export function freezeClosedMonths(live, days, settings, coverage, snapshots) {
+  /** @type {Map<string, Day[]>} */
+  const byMonth = new Map();
+
+  for (const day of days) {
+    const key = groupKey(day.date, settings.grouping);
+    const list = byMonth.get(key);
+
+    if (list) list.push(day);
+    else byMonth.set(key, [day]);
+  }
+
+  /** @type {MonthSnapshots} */
+  const next = {};
+  const prefix = `${settings.grouping}:`;
+
+  // Snapshots for the other grouping are kept as they are.
+  for (const [id, snap] of Object.entries(snapshots)) {
+    if (!id.startsWith(prefix)) next[id] = snap;
+  }
+
+  const stats = live.map((stat) => {
+    if (groupEnd(stat.key, settings.grouping) > coverage) return stat;
+
+    const id = prefix + stat.key;
+    const hash = monthHash(byMonth.get(stat.key) ?? []);
+    const saved = snapshots[id];
+
+    if (saved && saved.hash === hash) {
+      next[id] = saved;
+
+      return saved.stat;
+    }
+
+    next[id] = { hash, stat };
+
+    return stat;
+  });
+
+  return { stats, snapshots: next };
 }

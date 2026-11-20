@@ -1,4 +1,4 @@
-/** @import { Backup, Day, DayStatus, Entry, Holiday, RoundingRule, Settings } from "./types.js" */
+/** @import { Backup, Day, DayStatus, Entry, Holiday, MonthSnapshots, RoundingRule, Settings } from "./types.js" */
 import { BACKUP_VERSION, STATUSES } from "./constants.js";
 import { isDateKey, pad2, toDateKey } from "./dates.js";
 import { isTime, round2 } from "./time.js";
@@ -90,6 +90,7 @@ function dayFromFlatRow(raw, date) {
  * @property {Day[]} days
  * @property {Holiday[]} holidays
  * @property {Partial<Settings>} settings
+ * @property {MonthSnapshots} snapshots
  * @property {number} skipped  Rows without a valid date.
  */
 
@@ -105,7 +106,7 @@ export function parseImport(json) {
   if (!rows) throw new Error("No days found in that file.");
 
   /** @type {ParsedImport} */
-  const out = { days: [], holidays: [], settings: {}, skipped: 0 };
+  const out = { days: [], holidays: [], settings: {}, snapshots: {}, skipped: 0 };
 
   for (const raw of rows) {
     if (!isObject(raw) || !isDateKey(raw.date)) {
@@ -126,6 +127,8 @@ export function parseImport(json) {
     }
 
     if (isObject(json.settings)) out.settings = settingsFrom(json.settings);
+
+    if (isObject(json.snapshots)) out.snapshots = snapshotsFrom(json.snapshots);
   }
 
   return out;
@@ -167,10 +170,10 @@ function settingsFrom(s) {
 }
 
 /**
- * @param {{ days: Day[], holidays: Holiday[], settings: Settings, createdAt: string | null }} doc
+ * @param {{ days: Day[], holidays: Holiday[], settings: Settings, snapshots: MonthSnapshots, createdAt: string | null }} doc
  * @returns {Backup}
  */
-export function buildBackup({ days, holidays, settings, createdAt }) {
+export function buildBackup({ days, holidays, settings, snapshots, createdAt }) {
   return {
     app: "rto",
     version: BACKUP_VERSION,
@@ -178,6 +181,7 @@ export function buildBackup({ days, holidays, settings, createdAt }) {
     createdAt,
     settings,
     holidays,
+    snapshots,
     days: [...days].sort((a, b) => a.date.localeCompare(b.date)),
   };
 }
@@ -261,3 +265,43 @@ export function mergeDays(local, incoming) {
  * @param {Date} at
  */
 export const backupFileName = (at) => `rto-backup-${toDateKey(at)}-${pad2(at.getHours())}${pad2(at.getMinutes())}.json`;
+
+const STAT_NUMBERS = ["total", "counted", "present", "denom", "wfh", "unverified", "unverifiedAvg"];
+
+/**
+ * Frozen month stats from a backup; anything malformed is dropped (that
+ * month is then simply recalculated).
+ * @param {Record<string, unknown>} raw
+ * @returns {MonthSnapshots}
+ */
+function snapshotsFrom(raw) {
+  /** @type {MonthSnapshots} */
+  const out = {};
+
+  for (const [id, snap] of Object.entries(raw)) {
+    if (!/^(tracking|calendar):\d{4}-\d{2}$/.test(id) || !isObject(snap) || typeof snap.hash !== "string" || !isObject(snap.stat)) continue;
+
+    const st = snap.stat;
+
+    if (typeof st.key !== "string" || !STAT_NUMBERS.every((k) => num(st[k]) !== null)) continue;
+
+    out[id] = {
+      hash: snap.hash,
+      stat: {
+        key: st.key,
+        total: /** @type {number} */ (st.total),
+        counted: /** @type {number} */ (st.counted),
+        avg: num(st.avg),
+        present: /** @type {number} */ (st.present),
+        denom: /** @type {number} */ (st.denom),
+        wfh: /** @type {number} */ (st.wfh),
+        presencePct: num(st.presencePct),
+        unverified: /** @type {number} */ (st.unverified),
+        unverifiedAvg: /** @type {number} */ (st.unverifiedAvg),
+        partial: false,
+      },
+    };
+  }
+
+  return out;
+}
