@@ -58,7 +58,9 @@ function dayCard(day, settings, today, holiday) {
   } else if (rec && isTime(rec.start) && isTime(rec.end)) {
     const p = predictEntry(rec, settings);
 
-    details.push(`Predicted ${formatTime(p?.start)} → ${formatTime(p?.end)} · ${formatHours(p?.hours)} · not verified`);
+    details.push(
+      `Predicted ${formatTime(p?.start)} → ${formatTime(p?.end)} · ${formatHours(p?.hours)} · ${isPast ? "not verified" : "planned"}`,
+    );
   } else if (r.open) {
     details.push("Hours are calculated at clock-out");
   } else if (isPast) {

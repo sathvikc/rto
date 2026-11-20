@@ -119,6 +119,19 @@ effect(() => {
   saveTimer = setTimeout(flush, SAVE_DEBOUNCE_MS);
 });
 
+/**
+ * A day after today cannot have been confirmed by a timesheet. Earlier
+ * versions allowed it; keep its numbers as a planned entry instead.
+ * @param {Day} day
+ * @param {string} today
+ * @returns {Day}
+ */
+function unverifyFuture(day, today) {
+  if (day.date <= today || !day.actual) return day;
+
+  return { ...day, recorded: day.recorded ?? day.actual, actual: null };
+}
+
 /** @param {Day[]} days */
 const newestFirst = (days) => [...days].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -136,7 +149,7 @@ export async function loadState() {
 
   const meta = /** @type {{ lastExportAt?: unknown, createdAt?: unknown } | null} */ (doc);
 
-  data.days = newestFirst(parsed?.days ?? []);
+  data.days = newestFirst((parsed?.days ?? []).map((d) => unverifyFuture(d, toDateKey(new Date()))));
   data.holidays = parsed?.holidays ?? [];
   data.settings = { ...DEFAULT_SETTINGS, ...(parsed?.settings ?? {}) };
   data.lastExportAt = typeof meta?.lastExportAt === "string" ? meta.lastExportAt : null;

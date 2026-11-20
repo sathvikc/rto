@@ -290,10 +290,28 @@
           <button type="button" class="chip chip--suggest" data-action="use-usual" data-show="usualLabel" data-bind="usualLabel"></button>
           <p class="field__hint tabular" data-bind="preview"></p>
         </div>
-        <p class="field__hint" data-hidden="showTimes" data-bind="statusHint"></p>
+
+        <div class="field" data-show="showPto">
+          <label class="field__label" for="f-rpto">PTO hours <span class="text-dim" data-bind="ptoLabelHint"></span></label>
+          <div class="cluster pto-row">
+            <input
+              id="f-rpto"
+              class="input input--compact"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              data-bind="rPto"
+              placeholder="0"
+            />
+            <button type="button" class="chip" data-action="set-pto" data-value="8">8h</button>
+            <button type="button" class="chip" data-action="set-pto" data-value="4">4h</button>
+            <button type="button" class="chip" data-action="set-pto" data-value="">None</button>
+          </div>
+        </div>
+        <p class="field__hint" data-bind="statusHint"></p>
 
         <details class="more" data-open="moreOpen">
-          <summary class="more__summary">More: PTO, timesheet, note</summary>
+          <summary class="more__summary" data-bind="moreLabel"></summary>
 
           <div class="field-grid">
             <div class="field" data-show="showTimes">
@@ -308,13 +326,9 @@
                 data-disabled="hoursLocked"
               />
             </div>
-            <div class="field" data-show="showPto">
-              <label class="field__label" for="f-rpto">PTO hours</label>
-              <input id="f-rpto" class="input" type="text" inputmode="decimal" autocomplete="off" data-bind="rPto" />
-            </div>
           </div>
 
-          <fieldset class="fieldset">
+          <fieldset class="fieldset" data-show="canVerify">
             <legend class="fieldset__legend">Timesheet</legend>
             <label class="switch">
               <input class="switch__input" type="checkbox" data-bind="verified" />

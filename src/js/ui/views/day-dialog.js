@@ -17,10 +17,10 @@ import { byId, html, render, segmentButtons } from "../dom.js";
 
 /** @type {Readonly<Record<DayStatus, string>>} */
 const STATUS_HINT = {
-  office: "Counts toward presence and average hours.",
-  wfh: "Presence 0. Not counted in average hours.",
-  ooo: "Out of office: presence 1. Add PTO hours if any.",
-  sick: "Sick day: presence 1. Add PTO hours if any.",
+  office: "Counts toward presence and your average (work + PTO).",
+  wfh: "Presence 0. Not counted in your average.",
+  ooo: "Full day out: presence 1, not counted in your average. Working part of the day? Choose Office and add PTO instead.",
+  sick: "Sick day: presence 1, not counted in your average. Working part of the day? Choose Office and add PTO instead.",
 };
 
 const STATUS_OPTIONS = STATUSES.map((s) => /** @type {const} */ ([s, STATUS_LABEL[s]]));
@@ -81,6 +81,9 @@ export function mountDayDialog() {
     canFill: false,
     preview: "",
     usualLabel: "",
+    ptoLabelHint: "",
+    canVerify: true,
+    moreLabel: "",
     moreOpen: false,
   });
 
@@ -116,6 +119,11 @@ export function mountDayDialog() {
       form.statusHint = STATUS_HINT[status];
       form.showTimes = office;
       form.showPto = status !== "wfh";
+      form.ptoLabelHint = office ? "(optional, for a partial day off)" : "";
+
+      // A timesheet can only confirm a day that has happened.
+      form.canVerify = form.date <= ui.today;
+      form.moreLabel = form.canVerify ? "More: timesheet, hours without times, note" : "More: hours without times, note";
       form.hoursLocked = Boolean(rStart && rEnd);
       form.canFill = office ? Boolean((rStart && rEnd) || rHours.trim() || rPto.trim()) : Boolean(rPto.trim());
 
@@ -139,7 +147,7 @@ export function mountDayDialog() {
     const day = date ? findDay(date) : null;
     const r = day?.recorded;
     const a = day?.actual;
-    const hasExtras = Boolean(a || day?.note || r?.pto != null || (r && r.hours != null && !r.start));
+    const hasExtras = Boolean(a || day?.note || (r && r.hours != null && !r.start));
 
     // A new entry defaults to today, or yesterday when today is already logged.
     const defaultDate = findDay(ui.today) ? addDays(ui.today, -1) : ui.today;
@@ -208,7 +216,7 @@ export function mountDayDialog() {
     /** @type {Entry | null} */
     let actual = null;
 
-    if (f.verified) {
+    if (f.verified && f.date <= ui.today) {
       if (office) {
         if (f.aEnd && !f.aStart) throw new FormError("Timesheet: add the in time, or clear the out time.");
 
@@ -303,6 +311,9 @@ export function mountDayDialog() {
       open(el.dataset.date ?? null);
     },
     "day-date": (el) => pickDate(el.dataset.value ?? ui.today),
+    "set-pto": (el) => {
+      form.rPto = el.dataset.value ?? "";
+    },
     "use-usual": () => {
       const usual = model.usual;
 

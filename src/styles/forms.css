@@ -114,6 +114,10 @@
     font-weight: 650;
   }
 
+  .pto-row {
+    flex-wrap: nowrap;
+  }
+
   .date-row {
     flex-wrap: nowrap;
   }
