@@ -85,7 +85,7 @@ export function render(el, content) {
 export const segmentButtons = (options, active, action) =>
   options.map(
     ([value, label]) =>
-      html`<button type="button" class="seg__btn" aria-pressed="${value === active}" data-action="${action}" data-value="${value}">
+      html`<button type="button" class="seg__btn" aria-pressed="${String(value === active)}" data-action="${action}" data-value="${value}">
         ${label}
       </button>`,
   );

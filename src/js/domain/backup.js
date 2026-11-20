@@ -231,3 +231,26 @@ export function replaceHolidaysForYear(existing, year, list) {
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/**
+ * Merge imported days into local ones. The file wins: a day in the file
+ * replaces the local day with the same date; local days not in the file
+ * are kept.
+ * @param {Day[]} local
+ * @param {Day[]} incoming
+ * @returns {{ days: Day[], added: number, replaced: number }} days newest first
+ */
+export function mergeDays(local, incoming) {
+  const byDate = new Map(local.map((d) => [d.date, d]));
+  let added = 0;
+  let replaced = 0;
+
+  for (const day of incoming) {
+    if (byDate.has(day.date)) replaced++;
+    else added++;
+
+    byDate.set(day.date, day);
+  }
+
+  return { days: [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date)), added, replaced };
+}

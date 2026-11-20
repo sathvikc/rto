@@ -11,7 +11,7 @@ There's no account, server or tracking. Everything is stored on your device, and
 - **Forgotten clock-out guard**: a shift left open overnight asks when you left instead of becoming a 20-hour day.
 - **Quick day entry** with Today/Yesterday, your usual times in one tap, and extras (PTO, timesheet, note) tucked under More.
 - **Day types:** Office, WFH, OOO and Sick.
-- **Your entry vs. the official timesheet.** Each day can hold both. Unverified days are marked `*`, and when the weekly timesheet is out, a review sheet confirms them in a couple of taps.
+- **Your entry vs. the official timesheet.** Office days can hold both. Unverified days are marked `*`; a **Matches? / ✓ Matched** toggle on each card (and a weekly review sheet) confirms them. WFH, OOO and Sick days count as verified automatically.
 - **Rounding rules** on a 15-minute grid: Down, Up, Nearest, None, or Custom with a grace window. A **rounding check** shows how well the rules predict the timesheet.
 - **Company holidays**, skipped for workdays left and presence.
 - **Home / History / Settings tabs.** Home shows today and the current month (average, presence, the average still needed). History has any month's stats, charts and the day list.
@@ -56,7 +56,7 @@ The Home Screen app keeps **its own storage**, separate from browser tabs. Impor
 - `recorded` is your own entry, with raw times.
 - `actual` is the official timesheet. When present, the day is verified.
 - Times are 24-hour `HH:MM`. `hours` is used only when there are no times. `null` means blank.
-- Import merges by date.
+- Import merges by date and the file wins: its days replace local days with the same date; other local days are kept.
 
 ## Development
 

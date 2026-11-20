@@ -29,6 +29,13 @@
     color: var(--color-on-accent);
   }
 
+  /* Two-state button (aria-pressed), e.g. Matches? / ✓ Matched. */
+  .btn--toggle[aria-pressed="true"] {
+    border-color: var(--color-ok);
+    background: color-mix(in srgb, var(--color-ok) 14%, var(--color-surface));
+    color: var(--color-ok);
+  }
+
   .btn--danger {
     background: var(--color-danger);
     border-color: var(--color-danger);

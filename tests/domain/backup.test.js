@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { buildBackup, holidaysToText, parseHolidays, parseImport, replaceHolidaysForYear } from "../../src/js/domain/backup.js";
+import { buildBackup, holidaysToText, mergeDays, parseHolidays, parseImport, replaceHolidaysForYear } from "../../src/js/domain/backup.js";
 import { office } from "../helpers.js";
 
 describe("parseImport", () => {
@@ -90,4 +90,17 @@ test("saving one year's holidays keeps the other years", () => {
       "2027-11-25 Thanksgiving",
     ],
   );
+});
+
+test("import merge: the file wins on the same date, other local days are kept", () => {
+  const local = [office("2026-11-02", "09:00", "17:00"), office("2026-11-03", "09:00", "17:00")];
+  const incoming = [office("2026-11-03", "08:30", "16:30"), office("2026-11-04", "09:00", "17:00")];
+  const { days, added, replaced } = mergeDays(local, incoming);
+
+  assert.deepEqual(
+    days.map((d) => `${d.date} ${d.recorded?.start}`),
+    ["2026-11-04 09:00", "2026-11-03 08:30", "2026-11-02 09:00"],
+  );
+
+  assert.deepEqual([added, replaced], [1, 1]);
 });

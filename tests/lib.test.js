@@ -25,3 +25,8 @@ test("html escapes interpolations and keeps nested templates", () => {
 
   assert.equal(out.value, `<p title="${escapeHtml(note)}">${escapeHtml(note)}<b>ok</b><i>1</i>&lt;2&gt;0</p>`);
 });
+
+test("boolean attributes need String(): false renders nothing", () => {
+  assert.equal(html`<b aria-pressed="${false}"></b>`.value, `<b aria-pressed=""></b>`);
+  assert.equal(html`<b aria-pressed="${String(false)}"></b>`.value, `<b aria-pressed="false"></b>`);
+});

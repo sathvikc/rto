@@ -180,7 +180,7 @@ export function mountSettings() {
       const { lastExportAt, days, holidays, storage, persist } = data;
       const exported = lastExportAt ? `Last export ${formatShortDate(lastExportAt)}.` : "Never exported.";
 
-      view.backupInfo = `${plural(days.length, "day")} and ${plural(holidays.length, "holiday")} on this device. ${exported} Import merges by date: a day in the file replaces the same day here.`;
+      view.backupInfo = `${plural(days.length, "day")} and ${plural(holidays.length, "holiday")} on this device. ${exported} Import: the file wins. Its days replace the same dates here; other days are kept.`;
 
       const where =
         storage === "localstorage" ? "localStorage (IndexedDB unavailable)" : storage === "failed" ? "nowhere: saving failed" : "IndexedDB";
@@ -330,13 +330,16 @@ export function mountSettings() {
       const result = importBackup(await file.text());
 
       await flush();
-      view.holidayText = holidaysToText(data.holidays);
+      loadHolidayEditor();
 
-      const extras = [result.holidays && plural(result.holidays, "holiday"), result.skipped && `${result.skipped} rows skipped`].filter(
-        Boolean,
-      );
+      const parts = [
+        `${result.added} new`,
+        result.replaced && `${result.replaced} replaced`,
+        result.holidays && plural(result.holidays, "holiday"),
+        result.skipped && `${result.skipped} rows skipped`,
+      ].filter(Boolean);
 
-      toast(`Imported ${plural(result.days, "day")}${extras.length ? ` (${extras.join(", ")})` : ""}`);
+      toast(`Imported ${plural(result.added + result.replaced, "day")}: ${parts.join(", ")}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Import failed.");
     }

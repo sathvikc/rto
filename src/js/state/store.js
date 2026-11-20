@@ -12,8 +12,8 @@
 import { batch, effect, state } from "lume-js";
 import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js";
 import { toDateKey } from "../domain/dates.js";
-import { EMPTY_ENTRY, isOpen, predictEntry } from "../domain/days.js";
-import { buildBackup, parseImport } from "../domain/backup.js";
+import { EMPTY_ENTRY, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
+import { buildBackup, mergeDays, parseImport } from "../domain/backup.js";
 import { fromMinutes, round2, timeOf, toMinutes } from "../domain/time.js";
 import { deleteDocument, loadDocument, requestPersistence, saveDocument } from "./persistence.js";
 import { formatTime } from "../lib/format.js";
@@ -118,19 +118,6 @@ effect(() => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, SAVE_DEBOUNCE_MS);
 });
-
-/**
- * A day after today cannot have been confirmed by a timesheet. Earlier
- * versions allowed it; keep its numbers as a planned entry instead.
- * @param {Day} day
- * @param {string} today
- * @returns {Day}
- */
-function unverifyFuture(day, today) {
-  if (day.date <= today || !day.actual) return day;
-
-  return { ...day, recorded: day.recorded ?? day.actual, actual: null };
-}
 
 /** @param {Day[]} days */
 const newestFirst = (days) => [...days].sort((a, b) => b.date.localeCompare(a.date));
@@ -394,6 +381,24 @@ export function verifyAsPredicted(dates) {
   toast(dates.length === 1 ? "Marked as matching the timesheet" : `${dates.length} days marked as matching`);
 }
 
+/**
+ * Matches toggle on a day card: match against the predicted timesheet, or
+ * undo the match.
+ * @param {string} date
+ */
+export function toggleMatch(date) {
+  const day = findDay(date);
+
+  if (!day) return;
+
+  if (day.actual) {
+    saveDay(unmatchDay(day));
+    toast("Match removed");
+  } else {
+    verifyAsPredicted([date]);
+  }
+}
+
 // ---------------------------------------------------------------- settings
 
 /** @param {Partial<Settings>} patch */
@@ -434,11 +439,13 @@ export function importBackup(json) {
 
   if (!imp.days.length && !imp.holidays.length) throw new Error("No days found in that file.");
 
+  // The file wins: its days replace local days with the same date.
   const at = new Date().toISOString();
-  const days = new Map(data.days.map((d) => [d.date, d]));
+  const today = toDateKey(new Date());
+  const incoming = imp.days.map((d) => unverifyFuture({ ...d, updatedAt: at }, today));
+  const merged = mergeDays(data.days, incoming);
 
-  for (const d of imp.days) days.set(d.date, { ...d, updatedAt: at });
-  data.days = newestFirst([...days.values()]);
+  data.days = merged.days;
 
   if (imp.holidays.length) {
     const holidays = new Map(data.holidays.map((h) => [h.date, h]));
@@ -449,7 +456,7 @@ export function importBackup(json) {
 
   updateSettings(imp.settings);
 
-  return { days: imp.days.length, holidays: imp.holidays.length, skipped: imp.skipped };
+  return { added: merged.added, replaced: merged.replaced, holidays: imp.holidays.length, skipped: imp.skipped };
 }
 
 export async function eraseEverything() {

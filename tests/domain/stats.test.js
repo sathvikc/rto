@@ -42,11 +42,11 @@ describe("monthlyStats", () => {
     assert.equal(monthlyStats(days, [], { ...settings, grouping: "calendar" }, "2026-12-01")[0].key, "2026-12");
   });
 
-  test("the average star only counts unverified days that are in the average", () => {
-    const days = [office("2026-11-02", "09:00", "17:00"), plain("2026-11-03", "wfh")];
+  test("only office days count as unverified; WFH/OOO/Sick are verified automatically", () => {
+    const days = [office("2026-11-02", "09:00", "17:00"), plain("2026-11-03", "wfh"), plain("2026-11-04", "ooo")];
     const [st] = monthlyStats(days, [], settings, "2026-11-06");
 
-    assert.deepEqual([st.unverified, st.unverifiedAvg], [2, 1]);
+    assert.deepEqual([st.unverified, st.unverifiedAvg], [1, 1]);
   });
 });
 
