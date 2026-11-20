@@ -3,11 +3,11 @@ import { effect, state } from "lume-js";
 import { createCleanupGroup, repeat } from "lume-js/addons";
 import { STATUS_LABEL } from "../../domain/constants.js";
 import { addDays, groupKey, startOfWeekMonday } from "../../domain/dates.js";
-import { predictEntry, resolveDay } from "../../domain/days.js";
+import { canToggleMatch, isVerified, predictEntry, resolveDay } from "../../domain/days.js";
 import { isTime } from "../../domain/time.js";
 import { formatDay, formatHours, formatTime, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
-import { data, ui, verifyAsPredicted } from "../../state/store.js";
+import { data, toggleMatch, ui, verifyAsPredicted } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { byId, html, render, segmentButtons } from "../dom.js";
 
@@ -48,7 +48,9 @@ function dayCard(day, settings, today, holiday) {
   /** @type {Array<SafeHtml | string>} */
   const details = [];
 
-  if (r.verified && act) {
+  const office = day.status === "office";
+
+  if (office && r.verified && act) {
     const punchedDiffers = rec && isTime(rec.start) && isTime(rec.end) && (rec.start !== act.start || rec.end !== act.end);
 
     details.push(
@@ -58,10 +60,12 @@ function dayCard(day, settings, today, holiday) {
   } else if (rec && isTime(rec.start) && isTime(rec.end)) {
     const p = predictEntry(rec, settings);
 
-    details.push(`Predicted ${formatTime(p?.start)} → ${formatTime(p?.end)} · ${formatHours(p?.hours)} · not verified`);
+    details.push(
+      `Predicted ${formatTime(p?.start)} → ${formatTime(p?.end)} · ${formatHours(p?.hours)} · ${isPast ? "not verified" : "planned"}`,
+    );
   } else if (r.open) {
     details.push("Hours are calculated at clock-out");
-  } else if (isPast) {
+  } else if (office && isPast) {
     details.push("Not verified");
   }
 
@@ -87,8 +91,18 @@ function dayCard(day, settings, today, holiday) {
     <div class="cluster day-card__actions">
       <button type="button" class="btn btn--pill btn--small" data-action="edit-day" data-date="${day.date}">Edit</button>
       ${
-        unverified &&
-        html`<button type="button" class="btn btn--pill btn--small" data-action="verify-day" data-date="${day.date}">Matches ✓</button>`
+        isPast &&
+        canToggleMatch(day) &&
+        html`<button
+          type="button"
+          class="btn btn--pill btn--small btn--toggle"
+          aria-pressed="${String(r.verified)}"
+          data-action="toggle-match"
+          data-date="${day.date}"
+          title="${r.verified ? "Matches the timesheet. Tap to undo." : "Mark as matching the timesheet"}"
+        >
+          ${r.verified ? "✓ Matched" : "Matches?"}
+        </button>`
       }
       <button type="button" class="btn btn--pill btn--small text-danger" data-action="ask-delete" data-date="${day.date}">Delete</button>
     </div>`;
@@ -146,6 +160,19 @@ export function mountHistory() {
         caption.textContent = plural(rows.length, "day");
       }
 
+      // "Verified only" shows what the latest timesheet covers: verified
+      // days up to its coverage date.
+      if (ui.verifiedOnly) {
+        const coverage = model.coverage;
+        const shown = rows.filter((d) => d.date <= coverage && isVerified(d));
+        const hidden = rows.length - shown.length;
+
+        rows = shown;
+
+        if (hidden)
+          caption.textContent = `${caption.textContent} · ${plural(hidden, "day")} hidden (unverified or after ${formatDay(coverage, { year: false })})`;
+      }
+
       list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today, holidayByDate.get(d.date)) }));
       empty.hidden = rows.length > 0;
       empty.textContent = days.length ? "No days in this range." : "Nothing here yet. Clock in, or add a day with Manual entry.";
@@ -175,6 +202,7 @@ export function mountHistory() {
       ui.filter = /** @type {HistoryFilter} */ (el.dataset.value);
     },
     "verify-day": (el) => verifyAsPredicted([el.dataset.date ?? ""]),
+    "toggle-match": (el) => toggleMatch(el.dataset.date ?? ""),
   });
 
   return () => group.dispose();

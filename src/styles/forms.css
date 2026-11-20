@@ -114,6 +114,10 @@
     font-weight: 650;
   }
 
+  .pto-row {
+    flex-wrap: nowrap;
+  }
+
   .date-row {
     flex-wrap: nowrap;
   }
@@ -162,6 +166,11 @@
     font-weight: 600;
     -webkit-appearance: none;
     appearance: none;
+  }
+
+  /* Same height as the segmented toggle beside it (History). */
+  .history__controls > .select {
+    min-height: 2.625rem;
   }
 
   .textarea {

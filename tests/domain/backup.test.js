@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { buildBackup, holidaysToText, parseHolidays, parseImport } from "../../src/js/domain/backup.js";
+import { buildBackup, holidaysToText, mergeDays, parseHolidays, parseImport, replaceHolidaysForYear } from "../../src/js/domain/backup.js";
 import { office } from "../helpers.js";
 
 describe("parseImport", () => {
@@ -65,4 +65,42 @@ test("holiday text round-trips, sorted and de-duplicated", () => {
   assert.equal(list[0].name, "Thanksgiving Day");
   assert.equal(invalid, 2);
   assert.equal(holidaysToText(list), "2026-11-26 Thanksgiving Day\n2026-11-27 Day after");
+});
+
+test("saving one year's holidays keeps the other years", () => {
+  const existing = [
+    { date: "2026-11-26", name: "Thanksgiving" },
+    { date: "2026-12-25", name: "Christmas Day" },
+    { date: "2027-01-01", name: "Old" },
+  ];
+
+  const next = replaceHolidaysForYear(existing, "2027", [
+    { date: "2027-01-01", name: "New Year's Day" },
+    { date: "2027-11-25", name: "Thanksgiving" },
+    { date: "2026-12-24", name: "Christmas Eve" },
+  ]);
+
+  assert.deepEqual(
+    next.map((h) => `${h.date} ${h.name}`),
+    [
+      "2026-11-26 Thanksgiving",
+      "2026-12-24 Christmas Eve",
+      "2026-12-25 Christmas Day",
+      "2027-01-01 New Year's Day",
+      "2027-11-25 Thanksgiving",
+    ],
+  );
+});
+
+test("import merge: the file wins on the same date, other local days are kept", () => {
+  const local = [office("2026-11-02", "09:00", "17:00"), office("2026-11-03", "09:00", "17:00")];
+  const incoming = [office("2026-11-03", "08:30", "16:30"), office("2026-11-04", "09:00", "17:00")];
+  const { days, added, replaced } = mergeDays(local, incoming);
+
+  assert.deepEqual(
+    days.map((d) => `${d.date} ${d.recorded?.start}`),
+    ["2026-11-04 09:00", "2026-11-03 08:30", "2026-11-02 09:00"],
+  );
+
+  assert.deepEqual([added, replaced], [1, 1]);
 });

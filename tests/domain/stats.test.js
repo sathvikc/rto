@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { combineStats, monthlyStats, neededAverage, workdaysLeft } from "../../src/js/domain/stats.js";
+import { isVerified } from "../../src/js/domain/days.js";
+import { combineStats, monthlyStats, neededAverage, workdaysLeft, workdaysLeftDates } from "../../src/js/domain/stats.js";
 import { office, plain } from "../helpers.js";
 
 const settings = DEFAULT_SETTINGS;
@@ -42,11 +43,11 @@ describe("monthlyStats", () => {
     assert.equal(monthlyStats(days, [], { ...settings, grouping: "calendar" }, "2026-12-01")[0].key, "2026-12");
   });
 
-  test("the average star only counts unverified days that are in the average", () => {
-    const days = [office("2026-11-02", "09:00", "17:00"), plain("2026-11-03", "wfh")];
+  test("only office days count as unverified; WFH/OOO/Sick are verified automatically", () => {
+    const days = [office("2026-11-02", "09:00", "17:00"), plain("2026-11-03", "wfh"), plain("2026-11-04", "ooo")];
     const [st] = monthlyStats(days, [], settings, "2026-11-06");
 
-    assert.deepEqual([st.unverified, st.unverifiedAvg], [2, 1]);
+    assert.deepEqual([st.unverified, st.unverifiedAvg], [1, 1]);
   });
 });
 
@@ -61,6 +62,22 @@ describe("workdaysLeft", () => {
   test("skips holidays, planned leave and a finished today; runs into December for the tracking month", () => {
     // Nov 30, Dec 1, Dec 3, Dec 4
     assert.equal(workdaysLeft("2026-11", days, holidays, settings, "2026-11-25"), 4);
+  });
+
+  test("lists the dates, including the next month's days of a straddling week", () => {
+    const dates = workdaysLeftDates("2026-11", [], holidays, settings, "2026-11-20");
+
+    assert.deepEqual(dates, [
+      "2026-11-20",
+      "2026-11-23",
+      "2026-11-24",
+      "2026-11-25",
+      "2026-11-30",
+      "2026-12-01",
+      "2026-12-02",
+      "2026-12-03",
+      "2026-12-04",
+    ]);
   });
 
   test("calendar month stops at the month end; past months have none", () => {
@@ -80,4 +97,27 @@ test("combineStats sums months", () => {
   const c = combineStats([a, a]);
 
   assert.deepEqual([c.counted, c.avg], [2, 8]);
+});
+
+test("dashboard view: verified days up to the timesheet coverage, presence counted to that date", () => {
+  const sheet = { start: "09:00", end: "17:00", hours: 8, pto: null };
+
+  const days = [
+    { ...office("2026-11-16", "09:00", "17:00"), actual: sheet },
+    { ...office("2026-11-17", "09:00", "17:00"), actual: sheet },
+    office("2026-11-18", "09:00", "17:00"), // unverified, within coverage
+    office("2026-11-23", "09:00", "17:00"), // after coverage
+  ];
+
+  const coverage = "2026-11-20";
+
+  const [st] = monthlyStats(
+    days.filter((d) => d.date <= coverage && isVerified(d)),
+    [],
+    settings,
+    coverage,
+  );
+
+  // Week of Nov 15 only: Mon-Fri = 5 weekdays, 2 verified present.
+  assert.deepEqual([st.counted, st.present, st.denom, st.presencePct], [2, 2, 5, 40]);
 });

@@ -1,7 +1,7 @@
 /** Settings tab: theme, target, grouping, rounding, holidays, rounding check, backup. */
 import { batch, bindDom, effect, state } from "lume-js";
-import { createCleanupGroup } from "lume-js/addons";
-import { holidaysToText, parseHolidays } from "../../domain/backup.js";
+import { createCleanupGroup, watch } from "lume-js/addons";
+import { holidaysToText, parseHolidays, replaceHolidaysForYear } from "../../domain/backup.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
 import { PRESET_GRACE, graceOf, roundTime } from "../../domain/rounding.js";
 import { roundingCheck } from "../../domain/verification.js";
@@ -104,6 +104,8 @@ export function mountSettings() {
   const view = state({
     holidayText: "",
     holidayMessage: "",
+    holidaySummary: "",
+    holidayYear: "",
     backupInfo: "",
     storageInfo: "",
     versionInfo: `RTO ${APP_VERSION}`,
@@ -178,7 +180,7 @@ export function mountSettings() {
       const { lastExportAt, days, holidays, storage, persist } = data;
       const exported = lastExportAt ? `Last export ${formatShortDate(lastExportAt)}.` : "Never exported.";
 
-      view.backupInfo = `${plural(days.length, "day")} and ${plural(holidays.length, "holiday")} on this device. ${exported} Import merges by date: a day in the file replaces the same day here.`;
+      view.backupInfo = `${plural(days.length, "day")} and ${plural(holidays.length, "holiday")} on this device. ${exported} Import: the file wins. Its days replace the same dates here; other days are kept.`;
 
       const where =
         storage === "localstorage" ? "localStorage (IndexedDB unavailable)" : storage === "failed" ? "nowhere: saving failed" : "IndexedDB";
@@ -192,15 +194,66 @@ export function mountSettings() {
     }),
   );
 
-  // Refresh the holiday editor whenever the tab opens.
+  // ---- Company holidays: edited one year at a time ----
+  const yearSelect = byId("holiday-year", HTMLSelectElement);
+
+  /** Years to offer: any with holidays, plus this year and next. */
+  const holidayYears = () => {
+    const thisYear = Number(ui.today.slice(0, 4));
+    const years = new Set([String(thisYear), String(thisYear + 1), ...data.holidays.map((h) => h.date.slice(0, 4))]);
+
+    return [...years].sort();
+  };
+
+  /** @param {string} year */
+  const holidaysOf = (year) => data.holidays.filter((h) => h.date.startsWith(`${year}-`));
+
+  // Load the chosen year into the editor when the tab opens, the data
+  // finishes loading, or the year changes. watch() tracks only that one key:
+  // an effect reading data.holidays would also re-run on save and wipe the
+  // confirmation.
+  const loadHolidayEditor = () => {
+    if (ui.tab !== "settings" || !data.loaded) return;
+
+    const years = holidayYears();
+    const year = years.includes(view.holidayYear) ? view.holidayYear : ui.today.slice(0, 4);
+
+    render(yearSelect, html`${years.map((y) => html`<option value="${y}">${y}</option>`)}`);
+    yearSelect.value = year;
+
+    batch(() => {
+      view.holidayYear = year;
+      view.holidayText = holidaysToText(holidaysOf(year));
+      view.holidayMessage = "";
+    });
+  };
+
+  group.add(watch(ui, "tab", loadHolidayEditor));
+  group.add(watch(data, "loaded", loadHolidayEditor));
+
+  const onYearChange = () => {
+    view.holidayYear = yearSelect.value;
+    loadHolidayEditor();
+  };
+
+  yearSelect.addEventListener("change", onYearChange);
+  group.add(() => yearSelect.removeEventListener("change", onYearChange));
+
   group.add(
     effect(() => {
-      if (ui.tab !== "settings") return;
+      const { holidays } = data;
+      const next = holidays.find((h) => h.date >= ui.today);
 
-      batch(() => {
-        view.holidayText = holidaysToText(data.holidays);
-        view.holidayMessage = "";
-      });
+      /** @type {Map<string, number>} */
+      const perYear = new Map();
+
+      for (const h of holidays) perYear.set(h.date.slice(0, 4), (perYear.get(h.date.slice(0, 4)) ?? 0) + 1);
+
+      const counts = [...perYear.entries()].map(([y, n]) => `${y}: ${n}`).join(" · ");
+
+      view.holidaySummary = holidays.length
+        ? `Saved ${counts}${next ? `. Next: ${next.name || "holiday"}, ${formatDay(next.date, { year: false })}` : ""}.`
+        : "No holidays saved.";
     }),
   );
 
@@ -277,13 +330,16 @@ export function mountSettings() {
       const result = importBackup(await file.text());
 
       await flush();
-      view.holidayText = holidaysToText(data.holidays);
+      loadHolidayEditor();
 
-      const extras = [result.holidays && plural(result.holidays, "holiday"), result.skipped && `${result.skipped} rows skipped`].filter(
-        Boolean,
-      );
+      const parts = [
+        `${result.added} new`,
+        result.replaced && `${result.replaced} replaced`,
+        result.holidays && plural(result.holidays, "holiday"),
+        result.skipped && `${result.skipped} rows skipped`,
+      ].filter(Boolean);
 
-      toast(`Imported ${plural(result.days, "day")}${extras.length ? ` (${extras.join(", ")})` : ""}`);
+      toast(`Imported ${plural(result.added + result.replaced, "day")}: ${parts.join(", ")}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Import failed.");
     }
@@ -317,10 +373,12 @@ export function mountSettings() {
     roundOut: (el) => updateSettings({ roundOut: { ...data.settings.roundOut, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
     "save-holidays": () => {
       const { list, invalid } = parseHolidays(view.holidayText);
+      const year = view.holidayYear;
 
-      setHolidays(list);
-      view.holidayText = holidaysToText(list);
-      view.holidayMessage = `Saved ${list.length}${invalid ? `; ${plural(invalid, "line")} not understood` : ""}.`;
+      setHolidays(replaceHolidaysForYear(data.holidays, year, list));
+      view.holidayText = holidaysToText(holidaysOf(year));
+      view.holidayMessage = invalid ? `${plural(invalid, "line")} not understood (use YYYY-MM-DD Name).` : "";
+      toast(`Saved ${plural(holidaysOf(year).length, "holiday")} for ${year}`);
     },
     export: exportBackup,
     import: () => importInput.click(),

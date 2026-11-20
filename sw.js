@@ -5,7 +5,7 @@
  * launch without a version bump. Bump CACHE_NAME after removing or
  * renaming files so stale entries are dropped.
  */
-const CACHE_NAME = "rto-v3";
+const CACHE_NAME = "rto-v5";
 
 const APP_SHELL = [
   "./",

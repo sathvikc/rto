@@ -59,7 +59,7 @@ export function mountCharts() {
 
   group.add(
     effect(() => {
-      const { stats, selKey, currentKey } = model;
+      const { historyStats: stats, selKey, currentKey } = model;
       const mode = ui.chartGroup;
 
       render(toggle, html`${segmentButtons(GROUP_OPTIONS, mode, "chart-group")}`);

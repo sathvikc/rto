@@ -1,6 +1,7 @@
 /** Home: the current month at a glance, and the average still needed. */
 import { effect } from "lume-js";
-import { formatHours, monthName, plural } from "../../lib/format.js";
+import { startOfWeekSunday } from "../../domain/dates.js";
+import { formatDateRange, formatDay, formatHours, monthLong, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { data, updateSettings } from "../../state/store.js";
 import { registerActions } from "../actions.js";
@@ -22,12 +23,22 @@ export function mountMonthCard() {
   });
 
   return effect(() => {
-    const { currentKey, currentStat: st, needed, left, autoLeft } = model;
+    const { currentKey, currentStat: st, needed, left, autoLeft, autoLeftDates } = model;
     const { target, workdaysOverride } = data.settings;
 
     if (!currentKey) return;
 
     const overridden = workdaysOverride?.key === currentKey;
+
+    // A tracking month can run into the next calendar month: say so, or the
+    // count looks wrong ("Includes Dec 1–4: that week starts Nov 29").
+    const spill = autoLeftDates.filter((d) => d.slice(0, 7) !== currentKey);
+
+    const spillNote =
+      spill.length > 0 && !overridden
+        ? `Includes ${formatDateRange(spill[0], spill[spill.length - 1])}: that week starts ${formatDay(startOfWeekSunday(spill[0]), { year: false })}, so it counts toward ${monthLong(currentKey)}.`
+        : "";
+
     const onTrack = st?.avg != null && st.avg >= target;
 
     render(
@@ -76,7 +87,8 @@ export function mountMonthCard() {
         <p class="text-dim text-small">
           ${left > 0 ? `To finish at ${target}h over ${plural(left, "more office day")}.` : "No office days left this month."}
           ${!!st?.unverifiedAvg && html` <span class="star">*</span> ${plural(st.unverifiedAvg, "day")} not verified.`}
-        </p>`,
+        </p>
+        ${spillNote && html`<p class="text-dim text-small">${spillNote}</p>`}`,
     );
   });
 }

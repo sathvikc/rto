@@ -87,9 +87,10 @@
           <button type="button" class="btn btn--pill btn--small" data-action="open-day-form">+ Add day</button>
         </header>
 
-        <div class="cluster">
-          <label for="month-select" class="text-dim text-small">Month</label>
+        <div class="history__controls">
+          <label for="month-select" class="visually-hidden">Month</label>
           <select id="month-select" class="select"></select>
+          <div id="data-view" class="seg" role="group" aria-label="Which days to include"></div>
         </div>
         <article id="month-summary" class="card" aria-label="Month summary"></article>
 
@@ -163,8 +164,13 @@
         </section>
 
         <section class="card settings__group" aria-labelledby="s-holidays-heading">
-          <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
-          <p class="field__hint">One per line: <code>2026-11-26 Thanksgiving</code></p>
+          <div class="cluster cluster--between">
+            <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
+            <select id="holiday-year" class="select" aria-label="Holiday year"></select>
+          </div>
+          <p class="field__hint">
+            One per line: <code>2026-11-26 Thanksgiving</code>. Saving replaces this year only; other years are kept.
+          </p>
           <textarea
             id="s-holidays"
             class="textarea"
@@ -177,8 +183,9 @@
           ></textarea>
           <div class="cluster">
             <button type="button" class="btn btn--fit" data-action="save-holidays">Save holidays</button>
-            <span class="text-dim text-small" role="status" data-bind="holidayMessage"></span>
+            <span class="text-small text-danger" role="status" data-bind="holidayMessage"></span>
           </div>
+          <p class="field__hint" data-bind="holidaySummary"></p>
         </section>
 
         <section class="card settings__group" aria-labelledby="s-backup-heading">
@@ -190,6 +197,81 @@
             <input id="import-file" type="file" accept=".json,application/json,text/plain" hidden />
           </div>
           <p class="field__hint" data-bind="storageInfo"></p>
+        </section>
+
+        <section class="card settings__group help" aria-labelledby="s-help-heading">
+          <h3 id="s-help-heading" class="settings__heading">How it works</h3>
+
+          <details class="help__item">
+            <summary>Clocking in and out</summary>
+            <p>
+              Tap the big button when you arrive and when you leave. Forgot? Use <b>Set the time</b> under the button, or tap the "Started
+              …" line to correct it. Every punch can be undone from the message that pops up.
+            </p>
+            <p>A shift still open from an earlier day asks when you left, so a forgotten clock-out never becomes a 20-hour day.</p>
+          </details>
+
+          <details class="help__item">
+            <summary>Leave-by panel</summary>
+            <p>
+              While you're on the clock, Home shows what the timesheet records if you leave now, when the next quarter hour gets credited,
+              and when you'll hit the average you need this month.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Day types and PTO</summary>
+            <p>
+              <b>Office</b> counts toward presence and your average (work + PTO). For a partial day off, keep Office and add the PTO hours.
+            </p>
+            <p>
+              <b>OOO</b> and <b>Sick</b>: full day out. They count as present but aren't part of your average. <b>WFH</b>: not present, not
+              in your average.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Timesheet check and Matches</summary>
+            <p>
+              Your punches are a prediction until the official timesheet confirms them. Unverified office days show
+              <span class="star">*</span>.
+            </p>
+            <p>
+              The timesheet comes out on Wednesday and covers through the previous Friday. Home then shows "days to check". Tap
+              <b>Matches?</b> on a day when the timesheet agrees (tap again to undo), or <b>Edit</b> to enter what it really says. WFH, OOO
+              and Sick days need no check.
+            </p>
+            <p>History → <b>Verified only</b> shows the numbers from confirmed days alone, to compare with the official dashboard.</p>
+          </details>
+
+          <details class="help__item">
+            <summary>Rounding</summary>
+            <p>
+              Times round to a 15-minute grid. <b>Custom</b> rounds down when you're at most "grace" minutes past the quarter, otherwise up.
+              With a 4-minute grace, 4:16–4:19 counts as 4:15 and 4:20 counts as 4:30. The <b>Rounding check</b> below compares predictions
+              with verified days and suggests a grace that fits.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Months, presence and days left</summary>
+            <p>
+              <b>Tracking month</b> puts a week that straddles two months in the earlier month (a week starting Nov 29 belongs to November),
+              like the timesheet. <b>Calendar month</b> uses each day's own month.
+            </p>
+            <p>
+              Presence = present days ÷ weekdays in the weeks you logged, not counting company holidays. "Office days left" skips weekends,
+              holidays and days already marked WFH, OOO or Sick.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Your data</summary>
+            <p>
+              Everything stays on this device: there's no account or server. Export a backup now and then. Import merges by date, and days
+              in the file replace the same dates here.
+            </p>
+          </details>
         </section>
 
         <section class="card settings__group" aria-labelledby="s-danger-heading">
@@ -284,10 +366,28 @@
           <button type="button" class="chip chip--suggest" data-action="use-usual" data-show="usualLabel" data-bind="usualLabel"></button>
           <p class="field__hint tabular" data-bind="preview"></p>
         </div>
-        <p class="field__hint" data-hidden="showTimes" data-bind="statusHint"></p>
+
+        <div class="field" data-show="showPto">
+          <label class="field__label" for="f-rpto">PTO hours <span class="text-dim" data-bind="ptoLabelHint"></span></label>
+          <div class="cluster pto-row">
+            <input
+              id="f-rpto"
+              class="input input--compact"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              data-bind="rPto"
+              placeholder="0"
+            />
+            <button type="button" class="chip" data-action="set-pto" data-value="8">8h</button>
+            <button type="button" class="chip" data-action="set-pto" data-value="4">4h</button>
+            <button type="button" class="chip" data-action="set-pto" data-value="">None</button>
+          </div>
+        </div>
+        <p class="field__hint" data-bind="statusHint"></p>
 
         <details class="more" data-open="moreOpen">
-          <summary class="more__summary">More: PTO, timesheet, note</summary>
+          <summary class="more__summary" data-bind="moreLabel"></summary>
 
           <div class="field-grid">
             <div class="field" data-show="showTimes">
@@ -302,13 +402,9 @@
                 data-disabled="hoursLocked"
               />
             </div>
-            <div class="field" data-show="showPto">
-              <label class="field__label" for="f-rpto">PTO hours</label>
-              <input id="f-rpto" class="input" type="text" inputmode="decimal" autocomplete="off" data-bind="rPto" />
-            </div>
           </div>
 
-          <fieldset class="fieldset">
+          <fieldset class="fieldset" data-show="canVerify">
             <legend class="fieldset__legend">Timesheet</legend>
             <label class="switch">
               <input class="switch__input" type="checkbox" data-bind="verified" />

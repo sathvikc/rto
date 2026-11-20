@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { isOpen, needsVerification, presenceOf, resolveDay } from "../../src/js/domain/days.js";
+import {
+  canToggleMatch,
+  isOpen,
+  isVerified,
+  needsVerification,
+  presenceOf,
+  resolveDay,
+  unmatchDay,
+  unverifyFuture,
+} from "../../src/js/domain/days.js";
 import { spanHours } from "../../src/js/domain/time.js";
 import { office, plain } from "../helpers.js";
 
@@ -50,9 +59,41 @@ describe("presenceOf", () => {
   });
 });
 
-test("needsVerification skips verified, open and blank office days", () => {
+test("needsVerification: only logged office days that are not matched or open", () => {
   assert.equal(needsVerification(office("2026-11-02", "09:00", "17:00")), true);
-  assert.equal(needsVerification(plain("2026-11-03", "wfh")), true);
+  assert.equal(needsVerification(plain("2026-11-03", "wfh")), false);
   assert.equal(needsVerification(plain("2026-11-06", "office")), false);
   assert.equal(needsVerification(office("2026-11-20", "09:00", null)), false);
+});
+
+describe("verification", () => {
+  test("WFH, OOO and Sick count as verified automatically", () => {
+    for (const status of /** @type {const} */ (["wfh", "ooo", "sick"])) assert.equal(isVerified(plain("2026-11-03", status)), true);
+
+    assert.equal(isVerified(office("2026-11-02", "09:00", "17:00")), false);
+  });
+
+  test("only finished office days can toggle Matches", () => {
+    assert.equal(canToggleMatch(office("2026-11-02", "09:00", "17:00")), true);
+    assert.equal(canToggleMatch(office("2026-11-02", "09:00", null)), false);
+    assert.equal(canToggleMatch(plain("2026-11-03", "ooo")), false);
+  });
+
+  test("unmatching keeps your entry, or the timesheet numbers when there is no entry", () => {
+    const sheet = { start: "08:45", end: "16:15", hours: 7.5, pto: null };
+    const punched = { ...office("2026-11-02", "08:58", "16:20"), actual: sheet };
+    const importedOnly = { ...plain("2026-02-02", "office"), actual: sheet };
+
+    assert.deepEqual(unmatchDay(punched).recorded, punched.recorded);
+    assert.equal(unmatchDay(punched).actual, null);
+    assert.deepEqual(unmatchDay(importedOnly).recorded, sheet);
+  });
+
+  test("a future day cannot stay verified", () => {
+    const planned = { ...plain("2026-11-24", "ooo"), actual: { start: null, end: null, hours: null, pto: 5 } };
+
+    assert.deepEqual(unverifyFuture(planned, "2026-11-20").recorded?.pto, 5);
+    assert.equal(unverifyFuture(planned, "2026-11-20").actual, null);
+    assert.equal(unverifyFuture(planned, "2026-11-24"), planned);
+  });
 });

@@ -42,7 +42,7 @@ export function isOpen(day) {
  * @returns {Resolved}
  */
 export function resolveDay(day, settings) {
-  const verified = day.actual !== null;
+  const verified = isVerified(day);
 
   /** @type {Entry} */
   let entry;
@@ -86,11 +86,45 @@ export function presenceOf(day, r) {
 }
 
 /**
- * A logged day that has not been confirmed against the timesheet.
+ * Confirmed against the timesheet. WFH, OOO and Sick days need no check:
+ * they count as verified automatically.
+ * @param {Day} day
+ */
+export const isVerified = (day) => day.actual !== null || day.status !== "office";
+
+/**
+ * Only office days can be matched or un-matched against the timesheet.
+ * @param {Day} day
+ */
+export const canToggleMatch = (day) => day.status === "office" && !isOpen(day) && (day.recorded !== null || day.actual !== null);
+
+/**
+ * A logged office day that has not been confirmed against the timesheet.
  * @param {Day} day
  */
 export function needsVerification(day) {
-  if (day.actual || isOpen(day)) return false;
+  if (isVerified(day) || isOpen(day)) return false;
 
-  return day.recorded !== null || day.status !== "office";
+  return day.recorded !== null;
 }
+
+/**
+ * Undo a match: the day goes back to your own entry. A day that only ever
+ * had timesheet numbers (e.g. imported) keeps them as its entry.
+ * @param {Day} day
+ * @returns {Day}
+ */
+export function unmatchDay(day) {
+  if (!day.actual) return day;
+
+  return { ...day, recorded: day.recorded ?? day.actual, actual: null };
+}
+
+/**
+ * A day after today cannot have been confirmed by a timesheet. Earlier
+ * versions allowed it; keep its numbers as a planned entry instead.
+ * @param {Day} day
+ * @param {string} today
+ * @returns {Day}
+ */
+export const unverifyFuture = (day, today) => (day.date > today ? unmatchDay(day) : day);
