@@ -147,12 +147,17 @@ export function mountNow() {
           )
           .join(" · ");
 
+      // Colour the month average by the target, not by today's average:
+      // above target, any shorter day lowers the average, which says nothing.
       /** @param {number} avg */
-      const trend = (avg) => (currentAvg === null ? "" : avg > currentAvg + 0.005 ? "▲" : avg < currentAvg - 0.005 ? "▼" : "");
+      const avgClass = (avg) => (avg >= settings.target - 0.005 ? "leave-table__avg--ok" : "leave-table__avg--below");
 
       plan.markup = html`<div class="leave-plan__head">
           <span>If you leave…</span>
-          <span>Month avg now <strong>${currentAvg === null ? "—" : formatHours(currentAvg, 2)}</strong></span>
+          <span
+            >Month avg <strong>${currentAvg === null ? "—" : formatHours(currentAvg, 2)}</strong> · target
+            ${formatHours(settings.target)}</span
+          >
         </div>
         <table class="leave-table">
           <thead>
@@ -171,7 +176,7 @@ export function mountNow() {
                     <span>${label(row)} · out ${formatTime(row.out)}</span>
                   </th>
                   <td>${formatHours(row.hours)}</td>
-                  <td>${formatHours(row.average, 2)} <span class="leave-table__trend">${trend(row.average)}</span></td>
+                  <td class="${avgClass(row.average)}">${formatHours(row.average, 2)}</td>
                 </tr>`,
             )}
           </tbody>

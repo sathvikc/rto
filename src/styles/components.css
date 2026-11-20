@@ -238,15 +238,16 @@
     font-weight: 500;
   }
 
-  .leave-table__goal strong,
-  .leave-table__goal td {
+  .leave-table__goal strong {
     color: var(--color-accent);
   }
 
-  .leave-table__trend {
-    display: inline-block;
-    width: 1ch;
-    font-size: 0.6875rem;
+  .leave-table .leave-table__avg--ok {
+    color: var(--color-ok);
+  }
+
+  .leave-table .leave-table__avg--below {
+    color: var(--color-danger);
   }
 
   .leave-plan__tip {
