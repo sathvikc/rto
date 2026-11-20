@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RTO</title>
+  <meta name="description" content="Return to office: track your office days and hours. Data stays on your device.">
+  <meta name="theme-color" content="#f4f1ea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="RTO">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <script>
+    // Apply the saved theme before first paint (no flash).
+    (function () {
+      var t = "system";
+      try { t = localStorage.getItem("rto-theme") || "system"; } catch (e) {}
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "lume-js": "./vendor/lume-js/index.mjs",
+        "lume-js/addons": "./vendor/lume-js/addons.mjs",
+        "lume-js/handlers": "./vendor/lume-js/handlers.mjs"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="app" class="wrap">
+    <header class="top">
+      <div>
+        <p class="date-line" data-bind="dateLine"></p>
+        <h1 class="clock"><span data-bind="clockText"></span><span class="sec" data-bind="secText"></span></h1>
+      </div>
+      <button type="button" class="icon-btn" data-action="open-settings" aria-label="Settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </header>
+
+    <p class="dim lead" data-bind="statusLine"></p>
+    <p class="dim" data-bind="subLine"></p>
+
+    <div class="punch-wrap">
+      <button type="button" id="punch" class="punch" data-action="punch" data-class-out="isOpen" data-disabled="punchDisabled">
+        <span data-bind="punchLabel"></span>
+      </button>
+      <p class="dim center small" data-bind="roundingNote"></p>
+    </div>
+
+    <div id="today-status" class="today-status"></div>
+
+    <div class="row between gap">
+      <p class="dim small">Missed a punch, or adding a past day?</p>
+      <button type="button" class="pill" data-action="open-manual">Manual entry</button>
+    </div>
+
+    <div id="verify-banner"></div>
+
+    <div class="row gap month-row">
+      <label for="month-select" class="dim small">Month</label>
+      <select id="month-select" class="pill-select" aria-label="Month for the summary, charts and history"></select>
+    </div>
+
+    <section id="summary" class="card" aria-label="Monthly summary"></section>
+
+    <section class="card" aria-label="Daily average needed">
+      <div id="needed"></div>
+      <div class="target-row">
+        <label for="target-input" class="dim small">Target average</label>
+        <input id="target-input" class="small-input" type="text" inputmode="decimal" autocomplete="off" data-bind="targetText" aria-label="Target daily average in hours">
+        <span class="dim small">h / day</span>
+      </div>
+    </section>
+
+    <section class="block" aria-label="Charts">
+      <div class="row between gap">
+        <h2>Charts</h2>
+        <div class="seg" role="group" aria-label="Chart grouping" id="chart-group"></div>
+      </div>
+      <div id="charts"></div>
+    </section>
+
+    <section class="block" aria-label="History">
+      <div class="row between gap wrap-row">
+        <h2>History</h2>
+        <div class="seg" role="group" aria-label="History filter" id="history-filter"></div>
+      </div>
+      <div class="row gap history-meta">
+        <span class="dim small" id="history-caption"></span>
+        <label for="year-select" class="dim small push">Year</label>
+        <select id="year-select" class="pill-select" aria-label="Filter by year"></select>
+      </div>
+      <div id="history" class="list"></div>
+    </section>
+
+    <footer class="foot dim small">
+      <p>Your data stays on this device. Export a backup from Settings now and then.</p>
+    </footer>
+  </main>
+
+  <!-- Day form: manual entry / edit -->
+  <dialog id="day-dialog" class="sheet" aria-labelledby="day-title">
+    <form method="dialog" class="sheet-body" id="day-form" novalidate>
+      <div class="sheet-head">
+        <h3 id="day-title" data-bind="title"></h3>
+        <button type="button" class="icon-btn sm" data-action="close-dialog" aria-label="Close">×</button>
+      </div>
+
+      <div class="field">
+        <label for="f-date">Date</label>
+        <input id="f-date" type="date" data-bind="date" required>
+      </div>
+
+      <div class="field">
+        <span class="label">Day type</span>
+        <div class="seg full" role="group" aria-label="Day type" id="f-status"></div>
+        <p class="hint" data-bind="statusHint"></p>
+      </div>
+
+      <fieldset class="group">
+        <legend>My entry</legend>
+        <div class="grid2" data-show="showTimes">
+          <div class="field">
+            <label for="f-rstart">Clock in</label>
+            <input id="f-rstart" type="time" data-bind="rStart">
+          </div>
+          <div class="field">
+            <label for="f-rend">Clock out</label>
+            <input id="f-rend" type="time" data-bind="rEnd">
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field" data-show="showTimes">
+            <label for="f-rhours">Hours <span class="dim">(no times)</span></label>
+            <input id="f-rhours" type="text" inputmode="decimal" autocomplete="off" data-bind="rHours" data-disabled="hoursLocked">
+          </div>
+          <div class="field" data-show="showPto">
+            <label for="f-rpto">PTO hours</label>
+            <input id="f-rpto" type="text" inputmode="decimal" autocomplete="off" data-bind="rPto">
+          </div>
+        </div>
+        <p class="hint mono-nums" data-bind="preview"></p>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Timesheet</legend>
+        <label class="switch">
+          <input type="checkbox" data-bind="verified">
+          <span>Verified against the official timesheet</span>
+        </label>
+        <p class="hint" data-hidden="verified">Unverified days show <b>*</b> and use your entry with the rounding rules from Settings.</p>
+        <div data-show="verified">
+          <div class="grid2" data-show="showTimes">
+            <div class="field">
+              <label for="f-astart">Timesheet in</label>
+              <input id="f-astart" type="time" data-bind="aStart">
+            </div>
+            <div class="field">
+              <label for="f-aend">Timesheet out</label>
+              <input id="f-aend" type="time" data-bind="aEnd">
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field" data-show="showTimes">
+              <label for="f-ahours">Hours</label>
+              <input id="f-ahours" type="text" inputmode="decimal" autocomplete="off" data-bind="aHours" placeholder="from times">
+            </div>
+            <div class="field" data-show="showPto">
+              <label for="f-apto">PTO hours</label>
+              <input id="f-apto" type="text" inputmode="decimal" autocomplete="off" data-bind="aPto">
+            </div>
+          </div>
+          <button type="button" class="link-btn" data-action="copy-predicted" data-show="canCopy">Fill from my entry (predicted rounding)</button>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="f-note">Note</label>
+        <input id="f-note" type="text" autocomplete="off" data-bind="note" placeholder="Optional">
+      </div>
+
+      <p class="error" role="alert" data-bind="error"></p>
+      <div class="row gap actions">
+        <button type="button" class="btn" data-action="close-dialog">Cancel</button>
+        <button type="button" class="btn primary" data-action="save-day" data-bind="saveLabel"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Verify against the timesheet -->
+  <dialog id="verify-dialog" class="sheet" aria-labelledby="verify-title">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h3 id="verify-title">Check against timesheet</h3>
+        <button type="button" class="icon-btn sm" data-action="close-dialog" aria-label="Close">×</button>
+      </div>
+      <div id="verify-body"></div>
+    </div>
+  </dialog>
+
+  <!-- Delete confirm -->
+  <dialog id="delete-dialog" class="sheet" aria-labelledby="delete-title">
+    <div class="sheet-body">
+      <h3 id="delete-title">Delete this day?</h3>
+      <p class="dim" id="delete-text"></p>
+      <div class="row gap actions">
+        <button type="button" class="btn" data-action="close-dialog">Keep</button>
+        <button type="button" class="btn danger" data-action="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="settings-dialog" class="sheet" aria-labelledby="settings-title">
+    <div class="sheet-body">
+      <div class="sheet-head">
+        <h3 id="settings-title">Settings</h3>
+        <button type="button" class="icon-btn sm" data-action="close-dialog" aria-label="Close">×</button>
+      </div>
+
+      <h4>Appearance</h4>
+      <div class="seg full" role="group" aria-label="Theme" id="s-theme"></div>
+
+      <h4>Month grouping</h4>
+      <div class="seg full" role="group" aria-label="Month grouping" id="s-grouping"></div>
+      <p class="hint">Tracking month puts a week that straddles two months entirely in the earlier month, like the timesheet. Calendar month uses each day's own month.</p>
+
+      <h4>Rounding (15-minute grid)</h4>
+      <p class="hint">Applied to your own entries to predict the timesheet. Custom: round down when the minutes past the quarter hour are at or under the grace, otherwise round up.</p>
+      <div id="s-round-in"></div>
+      <div id="s-round-out"></div>
+
+      <h4>Company holidays</h4>
+      <p class="hint">One per line: <code>2026-11-26 Thanksgiving</code>. Holidays are skipped for workdays left and presence.</p>
+      <textarea id="s-holidays" rows="6" data-bind="holidayText" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <div class="row gap">
+        <button type="button" class="btn fit-btn" data-action="save-holidays">Save holidays</button>
+        <span class="dim small" data-bind="holidayMsg"></span>
+      </div>
+
+      <h4>Rounding check</h4>
+      <div id="s-check"></div>
+
+      <h4>Backup</h4>
+      <p class="hint" data-bind="backupInfo"></p>
+      <div class="row gap">
+        <button type="button" class="btn" data-action="export">Export JSON</button>
+        <button type="button" class="btn" data-action="import">Import JSON</button>
+        <input type="file" id="import-file" accept=".json,application/json,text/plain" hidden>
+      </div>
+      <p class="hint" data-bind="storageInfo"></p>
+
+      <h4>Danger zone</h4>
+      <button type="button" class="btn danger-outline" data-action="wipe">Erase all data on this device</button>
+      <p class="hint dim small" data-bind="versionInfo"></p>
+    </div>
+  </dialog>
+
+  <div id="toast-root"><div class="toast" role="status" aria-live="polite" data-bind="toast" data-show="toast"></div></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
