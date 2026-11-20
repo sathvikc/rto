@@ -70,6 +70,8 @@ function dayCard(day, settings, today) {
     details.push("Not verified");
   }
 
+  if (day.status === "holiday" && day.observedFrom) details.push(`Observed for ${formatDay(day.observedFrom, { year: false })}`);
+
   if (r.pto !== null) details.push(`PTO ${formatHours(r.pto)}${r.work !== null ? ` · worked ${formatHours(r.work)}` : ""}`);
 
   const star = unverified ? html`<sup class="star" title="Not verified">*</sup>` : "";

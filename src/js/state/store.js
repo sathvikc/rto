@@ -12,8 +12,9 @@
 import { batch, effect, state } from "lume-js";
 import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js";
 import { toDateKey } from "../domain/dates.js";
-import { EMPTY_ENTRY, isBlankDay, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
-import { buildBackup, copyHolidays, holidayDay, mergeDays, parseImport } from "../domain/backup.js";
+import { EMPTY_ENTRY, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
+import { buildBackup, mergeDays, parseImport } from "../domain/backup.js";
+import { copyHolidays, placeHoliday } from "../domain/holidays.js";
 import { fromMinutes, round2, timeOf, toMinutes } from "../domain/time.js";
 import { deleteDocument, loadDocument, requestPersistence, saveDocument } from "./persistence.js";
 import { formatTime } from "../lib/format.js";
@@ -198,6 +199,8 @@ export function saveDay(day, replaceDate = null) {
     note: day.note?.trim() || null,
     updatedAt: new Date().toISOString(),
   };
+
+  if (clean.status === "holiday" && day.observedFrom && day.observedFrom !== clean.date) clean.observedFrom = day.observedFrom;
 
   const rest = data.days.filter((d) => d.date !== clean.date && d.date !== replaceDate);
 
@@ -408,39 +411,45 @@ export function updateSettings(patch) {
 // ---------------------------------------------------------------- holidays
 
 /**
- * Add a company holiday as a Holiday day. A date you already logged keeps
- * your record.
- * @param {string} date
+ * Add a company holiday. A weekend date is observed on the nearest weekday.
+ * @param {string} date  The real date.
  * @param {string} name
- * @returns {string | null} error message
+ * @returns {{ error: string | null, observed: string | null }}  `observed` is the day it lands on.
  */
 export function addHoliday(date, name) {
-  const existing = findDay(date);
+  const placed = placeHoliday(data.days, date, name);
 
-  if (existing && !isBlankDay(existing)) return `${date} already has an entry. Edit that day instead.`;
+  if (!placed.day) return { error: placed.error, observed: null };
 
-  saveDay(holidayDay(date, name));
+  saveDay(placed.day);
 
-  return null;
+  return { error: null, observed: placed.day.date };
 }
 
 /**
- * Change a holiday's date or name.
- * @param {string} date  Current date.
+ * Change a holiday's real date or name.
+ * @param {string} recordDate  The date the holiday is stored on (observed).
  * @param {{ date?: string, name?: string }} change
  * @returns {string | null} error message
  */
-export function updateHoliday(date, change) {
-  const day = findDay(date);
+export function updateHoliday(recordDate, change) {
+  const day = findDay(recordDate);
 
   if (day?.status !== "holiday") return "That holiday no longer exists.";
 
-  const nextDate = change.date ?? date;
-  const target = nextDate === date ? null : findDay(nextDate);
+  const name = change.name ?? day.note ?? "";
 
-  if (target && !isBlankDay(target)) return `${nextDate} already has an entry.`;
+  if (!change.date) {
+    saveDay({ ...day, note: name.trim() || null });
 
-  saveDay(holidayDay(nextDate, change.name ?? day.note ?? ""), nextDate === date ? null : date);
+    return null;
+  }
+
+  const placed = placeHoliday(data.days, change.date, name, recordDate);
+
+  if (!placed.day) return placed.error;
+
+  saveDay(placed.day, recordDate);
 
   return null;
 }

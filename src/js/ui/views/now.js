@@ -94,7 +94,7 @@ export function mountNow() {
 
       if (todayHoliday) {
         view.statusLine = "Company holiday";
-        view.detailLine = todayHoliday.note ?? "Enjoy the day off";
+        view.detailLine = `${todayHoliday.note ?? "Enjoy the day off"}${todayHoliday.observedFrom ? ` (observed for ${formatDay(todayHoliday.observedFrom, { year: false })})` : ""}`;
       } else if (todayDay && todayDay.status !== "office") {
         view.statusLine = `Today: ${STATUS_LABEL[todayDay.status]}`;
         view.detailLine = "Not an office day";

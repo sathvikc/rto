@@ -252,7 +252,11 @@ export function mountDayDialog() {
 
       if (isNewDate && findDay(form.date) && !window.confirm(`${formatDay(form.date)} already has an entry. Replace it?`)) return;
 
-      saveDay({ date: form.date, status: form.status, recorded, actual, note: form.note }, moving ? form.editOf : null);
+      // Keep a holiday's real date when it's edited in place.
+      const before = form.editOf ? findDay(form.editOf) : null;
+      const observedFrom = form.status === "holiday" && !moving ? before?.observedFrom : undefined;
+
+      saveDay({ date: form.date, status: form.status, recorded, actual, note: form.note, observedFrom }, moving ? form.editOf : null);
       toast(form.editOf ? "Day updated" : "Day saved");
       closeDialogs();
     } catch (error) {

@@ -726,6 +726,18 @@
     color: var(--color-accent);
   }
 
+  .holiday-row__what {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .holiday-row__observed {
+    color: var(--color-holiday);
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
   .holiday-row__delete {
     width: 2rem;
     height: 2rem;

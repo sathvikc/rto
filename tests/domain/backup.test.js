@@ -1,16 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import {
-  backupFileName,
-  buildBackup,
-  copyHolidays,
-  holidayDay,
-  holidaysAsDays,
-  holidaysIn,
-  mergeDays,
-  parseImport,
-} from "../../src/js/domain/backup.js";
+import { backupFileName, buildBackup, mergeDays, parseImport } from "../../src/js/domain/backup.js";
+import { holidayDay } from "../../src/js/domain/holidays.js";
 import { office, plain } from "../helpers.js";
 
 describe("parseImport", () => {
@@ -48,6 +40,13 @@ describe("parseImport", () => {
     assert.equal(parsed.days.find((d) => d.date === "2026-12-25")?.note, "Christmas Day");
   });
 
+  test("observedFrom survives a backup round-trip", () => {
+    const days = [holidayDay("2026-07-03", "Independence Day", "2026-07-04")];
+    const parsed = parseImport(JSON.parse(JSON.stringify(buildBackup({ days, settings: DEFAULT_SETTINGS, createdAt: null }))));
+
+    assert.equal(parsed.days[0].observedFrom, "2026-07-04");
+  });
+
   test("flat rows: timesheet rows verified, punches unverified with raw times", () => {
     const parsed = parseImport({
       days: [
@@ -76,50 +75,6 @@ describe("parseImport", () => {
     const parsed = parseImport({ days: [], settings: { grouping: "weekly", target: 99, roundIn: { mode: "sideways" } } });
 
     assert.deepEqual(parsed.settings, {});
-  });
-});
-
-describe("holidays as days", () => {
-  test("holidaysAsDays replaces blank days only", () => {
-    const { days, added } = holidaysAsDays(
-      [plain("2026-01-01", "office"), plain("2026-01-19", "wfh")],
-      [
-        { date: "2026-01-01", name: "New Year's Day" },
-        { date: "2026-01-19", name: "MLK Day" },
-      ],
-    );
-
-    assert.equal(added, 1);
-
-    assert.deepEqual(
-      days.map((d) => d.status),
-      ["holiday", "wfh"],
-    );
-  });
-
-  test("holidaysIn lists one year in date order", () => {
-    const days = [
-      holidayDay("2026-12-25", "Christmas"),
-      office("2026-11-02", "09:00", "17:00"),
-      holidayDay("2026-01-01", "New Year"),
-      holidayDay("2027-01-01", ""),
-    ];
-
-    assert.deepEqual(
-      holidaysIn(days, "2026").map((d) => d.date),
-      ["2026-01-01", "2026-12-25"],
-    );
-  });
-
-  test("copyHolidays: same month/day and names next year; skips taken and impossible dates", () => {
-    const days = [
-      holidayDay("2024-02-29", "Leap"),
-      holidayDay("2024-11-28", "Thanksgiving"),
-      holidayDay("2024-12-25", "Christmas"),
-      holidayDay("2025-12-25", "Christmas"), // already there
-    ];
-
-    assert.deepEqual(copyHolidays(days, "2024", "2025"), [holidayDay("2025-11-28", "Thanksgiving")]);
   });
 });
 

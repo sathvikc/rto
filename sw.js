@@ -32,6 +32,7 @@ const APP_SHELL = [
   "src/js/domain/backup.js",
   "src/js/domain/constants.js",
   "src/js/domain/dates.js",
+  "src/js/domain/holidays.js",
   "src/js/domain/days.js",
   "src/js/domain/rounding.js",
   "src/js/domain/shift.js",

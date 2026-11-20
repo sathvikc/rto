@@ -25,7 +25,7 @@ Screenshots use generated demo data.
 - **Day types:** Office, WFH, OOO, Sick and Holiday.
 - **Your entry vs. the official timesheet.** Office days can hold both. Unverified days are marked `*`; a **Matches? / ✓ Matched** toggle on each card (and a weekly review sheet) confirms them. WFH, OOO and Sick days count as verified automatically.
 - **Rounding rules** on a 15-minute grid: Down, Up, Nearest, None, or Custom with a grace window. A **rounding check** shows how well the rules predict the timesheet.
-- **Company holidays** are days in your history (type Holiday), so changing next year's list never rewrites the past. Add them in Settings with a date picker, or copy last year's and adjust the dates.
+- **Company holidays** are days in your history (type Holiday), so changing next year's list never rewrites the past. Add them in Settings with a date picker, or copy last year's and adjust the dates. Weekend holidays are observed on the nearest weekday (Sat → Fri, Sun → Mon).
 - **Home / History / Settings tabs.** Home shows today and the current month (average, presence, the average still needed). History has any month's stats, charts and the day list.
 - **Verified only** view in History: the month's numbers from timesheet-confirmed days, up to the date the latest timesheet covers, to compare with the official dashboard.
 - **How it works** help in Settings.
@@ -66,7 +66,7 @@ The Home Screen app keeps **its own storage**, separate from browser tabs. Impor
 }
 ```
 
-- `status` is one of `office`, `wfh`, `ooo`, `sick` or `holiday` (the holiday's name is the `note`). Older backups with a separate `holidays` list are converted on import.
+- `status` is one of `office`, `wfh`, `ooo`, `sick` or `holiday` (the holiday's name is the `note`; `observedFrom` holds the real date when a weekend holiday is observed on a weekday). Older backups with a separate `holidays` list are converted on import.
 - `recorded` is your own entry, with raw times.
 - `actual` is the official timesheet. When present, the day is verified.
 - Times are 24-hour `HH:MM`. `hours` is used only when there are no times. `null` means blank.

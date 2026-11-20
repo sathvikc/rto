@@ -2,6 +2,7 @@
 import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { backupFileName } from "../../domain/backup.js";
+import { holidayDateOf, holidaysFrom } from "../../domain/holidays.js";
 import { addDays, isDateKey } from "../../domain/dates.js";
 import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
@@ -205,40 +206,43 @@ export function mountSettings() {
   // on a separate list.
   const holidayList = byId("holiday-list");
 
-  /** This year's and later holidays; past years live in History. */
-  const upcomingHolidays = () => {
-    const from = `${ui.today.slice(0, 4)}-01-01`;
-
-    return data.days.filter((d) => d.status === "holiday" && d.date >= from).sort((a, b) => a.date.localeCompare(b.date));
-  };
+  /** This year's and later holidays (by real date); past years live in History. */
+  const upcomingHolidays = () => holidaysFrom(data.days, `${ui.today.slice(0, 4)}-01-01`);
 
   /** The year "Copy" copies from: the latest one listed, or this year. */
-  const latestHolidayYear = () => upcomingHolidays().at(-1)?.date.slice(0, 4) ?? ui.today.slice(0, 4);
+  const latestHolidayYear = () => {
+    const last = upcomingHolidays().at(-1);
+
+    return last ? holidayDateOf(last).slice(0, 4) : ui.today.slice(0, 4);
+  };
 
   /** @param {import("../../domain/types.js").Day} d */
   const holidayRow = (d) =>
     html`<li class="holiday-row">
       <label class="holiday-row__when">
-        <span class="holiday-row__day">${shortDate(d.date)}</span>
-        <span class="holiday-row__weekday">${weekdayShort(d.date)}</span>
+        <span class="holiday-row__day">${shortDate(holidayDateOf(d))}</span>
+        <span class="holiday-row__weekday">${weekdayShort(holidayDateOf(d))}</span>
         <!-- Invisible native picker over the date text: tap the date to change it. -->
         <input
           class="holiday-row__picker"
           type="date"
-          value="${d.date}"
+          value="${holidayDateOf(d)}"
           data-holiday-date="${d.date}"
           aria-label="Date of ${d.note ?? "holiday"}"
         />
       </label>
-      <input
-        class="holiday-row__name"
-        type="text"
-        value="${d.note ?? ""}"
-        data-holiday-name="${d.date}"
-        placeholder="Name"
-        autocomplete="off"
-        aria-label="Holiday name"
-      />
+      <span class="holiday-row__what">
+        <input
+          class="holiday-row__name"
+          type="text"
+          value="${d.note ?? ""}"
+          data-holiday-name="${d.date}"
+          placeholder="Name"
+          autocomplete="off"
+          aria-label="Holiday name"
+        />
+        ${d.observedFrom && html`<span class="holiday-row__observed">Observed ${formatDay(d.date, { year: false })}</span>`}
+      </span>
       <button
         type="button"
         class="holiday-row__delete"
@@ -263,7 +267,11 @@ export function mountSettings() {
       /** @type {Map<string, import("../../domain/types.js").Day[]>} */
       const byYear = new Map();
 
-      for (const d of list) byYear.set(d.date.slice(0, 4), [...(byYear.get(d.date.slice(0, 4)) ?? []), d]);
+      for (const d of list) {
+        const year = holidayDateOf(d).slice(0, 4);
+
+        byYear.set(year, [...(byYear.get(year) ?? []), d]);
+      }
 
       render(
         holidayList,
@@ -282,7 +290,9 @@ export function mountSettings() {
 
       const next = list.find((d) => d.date >= ui.today);
 
-      view.holidaySummary = next ? `Next: ${next.note ?? "holiday"}, ${formatDay(next.date)}.` : "";
+      view.holidaySummary = next
+        ? `Next: ${next.note ?? "holiday"}, ${formatDay(next.date)}${next.observedFrom ? " (observed)" : ""}.`
+        : "";
     }),
   );
 
@@ -437,17 +447,17 @@ export function mountSettings() {
     roundOut: (el) => updateSettings({ roundOut: { ...data.settings.roundOut, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
     "add-holiday": () => {
       const date = nextFreeDate();
-      const error = addHoliday(date, "");
+      const { error, observed } = addHoliday(date, "");
 
-      if (error) {
-        toast(error);
+      if (error || !observed) {
+        toast(error ?? "Couldn't add the holiday.");
 
         return;
       }
 
       // Focus the new row's name once it has rendered.
       setTimeout(() => {
-        const input = holidayList.querySelector(`[data-holiday-name="${date}"]`);
+        const input = holidayList.querySelector(`[data-holiday-name="${observed}"]`);
 
         if (input instanceof HTMLInputElement) input.focus();
       }, 0);

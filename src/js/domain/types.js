@@ -15,7 +15,8 @@
  * @property {DayStatus} status
  * @property {Entry | null} recorded   Your own punch or entry, raw.
  * @property {Entry | null} actual     The official timesheet. Present = verified.
- * @property {string | null} note
+ * @property {string | null} note     For a Holiday: its name.
+ * @property {string} [observedFrom]   Holiday only: the real date, when it falls on a weekend and is observed on this weekday.
  * @property {string} [updatedAt]      ISO timestamp.
  *
  * @typedef {object} Holiday  Older backups listed holidays separately; they're converted to Holiday days.
