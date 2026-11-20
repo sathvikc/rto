@@ -114,13 +114,16 @@ export function monthlyStats(days, holidays, settings, today) {
  * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
+ * @returns {string[]} the dates, in order
  */
-export function workdaysLeft(monthKey, days, holidays, settings, today) {
+export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
   const holidaySet = holidayDates(holidays);
   const byDate = new Map(days.map((d) => [d.date, d]));
   const first = `${monthKey}-01`;
   const last = addDays(first, GROUP_SCAN_DAYS);
-  let count = 0;
+
+  /** @type {string[]} */
+  const dates = [];
 
   for (let date = today > first ? today : first; date <= last; date = addDays(date, 1)) {
     if (groupKey(date, settings.grouping) !== monthKey || !isWeekday(date) || holidaySet.has(date)) continue;
@@ -130,11 +133,22 @@ export function workdaysLeft(monthKey, days, holidays, settings, today) {
     if (day && day.status !== "office") continue;
     if (date === today && day && !isOpen(day) && (day.recorded || day.actual)) continue;
 
-    count++;
+    dates.push(date);
   }
 
-  return count;
+  return dates;
 }
+
+/**
+ * How many of {@link workdaysLeftDates} there are.
+ * @param {string} monthKey
+ * @param {Day[]} days
+ * @param {Holiday[]} holidays
+ * @param {Settings} settings
+ * @param {string} today
+ */
+export const workdaysLeft = (monthKey, days, holidays, settings, today) =>
+  workdaysLeftDates(monthKey, days, holidays, settings, today).length;
 
 /**
  * Average needed on each remaining day to finish the month at `target`.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { combineStats, monthlyStats, neededAverage, workdaysLeft } from "../../src/js/domain/stats.js";
+import { combineStats, monthlyStats, neededAverage, workdaysLeft, workdaysLeftDates } from "../../src/js/domain/stats.js";
 import { office, plain } from "../helpers.js";
 
 const settings = DEFAULT_SETTINGS;
@@ -61,6 +61,22 @@ describe("workdaysLeft", () => {
   test("skips holidays, planned leave and a finished today; runs into December for the tracking month", () => {
     // Nov 30, Dec 1, Dec 3, Dec 4
     assert.equal(workdaysLeft("2026-11", days, holidays, settings, "2026-11-25"), 4);
+  });
+
+  test("lists the dates, including the next month's days of a straddling week", () => {
+    const dates = workdaysLeftDates("2026-11", [], holidays, settings, "2026-11-20");
+
+    assert.deepEqual(dates, [
+      "2026-11-20",
+      "2026-11-23",
+      "2026-11-24",
+      "2026-11-25",
+      "2026-11-30",
+      "2026-12-01",
+      "2026-12-02",
+      "2026-12-03",
+      "2026-12-04",
+    ]);
   });
 
   test("calendar month stops at the month end; past months have none", () => {

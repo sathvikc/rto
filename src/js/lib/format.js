@@ -34,6 +34,9 @@ export function formatHours(hours, digits) {
 /** @param {number} monthIndex 0-11 */
 export const monthShort = (monthIndex) => MONTHS[monthIndex];
 
+/** "2026-11" -> "November" @param {string} key */
+export const monthLong = (key) => parseDateKey(`${key}-01`).toLocaleDateString(LOCALE, { month: "long" });
+
 /** "2026-11" -> "Nov 2026" @param {string} key */
 export const monthName = (key) => `${MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
 
@@ -73,3 +76,22 @@ export const plural = (count, singular, plural = `${singular}s`) => `${count} ${
 
 /** @param {string} iso */
 export const daysSince = (iso) => Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+
+/**
+ * "Dec 1–4", or "Nov 30 – Dec 4" across months; a single date when equal.
+ * @param {string} from "YYYY-MM-DD"
+ * @param {string} to
+ */
+export function formatDateRange(from, to) {
+  /** @param {string} key */
+  const month = (key) => MONTHS[Number(key.slice(5, 7)) - 1];
+
+  /** @param {string} key */
+  const day = (key) => Number(key.slice(8, 10));
+
+  if (from === to) return `${month(from)} ${day(from)}`;
+
+  if (from.slice(0, 7) === to.slice(0, 7)) return `${month(from)} ${day(from)}–${day(to)}`;
+
+  return `${month(from)} ${day(from)} – ${month(to)} ${day(to)}`;
+}

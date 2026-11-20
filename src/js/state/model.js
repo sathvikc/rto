@@ -11,7 +11,7 @@ import { batch, effect, state } from "lume-js";
 import { groupKey } from "../domain/dates.js";
 import { isOpen, needsVerification } from "../domain/days.js";
 import { isStaleShift, usualTimes } from "../domain/shift.js";
-import { monthlyStats, neededAverage, workdaysLeft } from "../domain/stats.js";
+import { monthlyStats, neededAverage, workdaysLeftDates } from "../domain/stats.js";
 import { timesheetCoverage } from "../domain/verification.js";
 import { data, ui } from "./store.js";
 
@@ -22,6 +22,7 @@ import { data, ui } from "./store.js";
  * @property {string} currentKey            Month containing today (Home).
  * @property {MonthStat | null} currentStat
  * @property {number} autoLeft              Workdays left this month (auto).
+ * @property {string[]} autoLeftDates       ...and which dates those are.
  * @property {number} left                  ...or the manual override.
  * @property {number | null} needed         Average needed on each remaining day.
  * @property {string} selKey                Month selected on the History tab.
@@ -44,6 +45,7 @@ const initialModel = {
   currentKey: "",
   currentStat: null,
   autoLeft: 0,
+  autoLeftDates: [],
   left: 0,
   needed: null,
   selKey: "",
@@ -72,7 +74,8 @@ effect(() => {
   const currentStat = stats.find((s) => s.key === currentKey) ?? null;
   const monthKeys = [...new Set([...stats.map((s) => s.key), currentKey])].sort().reverse();
   const selKey = monthSel && monthKeys.includes(monthSel) ? monthSel : currentKey;
-  const autoLeft = workdaysLeft(currentKey, days, holidays, settings, today);
+  const autoLeftDates = workdaysLeftDates(currentKey, days, holidays, settings, today);
+  const autoLeft = autoLeftDates.length;
   const override = settings.workdaysOverride;
   const left = override?.key === currentKey ? override.value : autoLeft;
   const coverage = timesheetCoverage(today, settings.releaseDay);
@@ -87,6 +90,7 @@ effect(() => {
       currentKey,
       currentStat,
       autoLeft,
+      autoLeftDates,
       left,
       needed: neededAverage(currentStat, left, settings.target),
       selKey,

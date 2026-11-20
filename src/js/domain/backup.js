@@ -214,3 +214,20 @@ export function parseHolidays(input) {
 
 /** @param {Holiday[]} list */
 export const holidaysToText = (list) => list.map((h) => (h.name ? `${h.date} ${h.name}` : h.date)).join("\n");
+
+/**
+ * Replace one year's holidays with `list`, keeping every other year. Lines
+ * dated in another year are merged into that year (same date replaced).
+ * @param {Holiday[]} existing
+ * @param {string} year "YYYY"
+ * @param {Holiday[]} list
+ * @returns {Holiday[]} sorted
+ */
+export function replaceHolidaysForYear(existing, year, list) {
+  /** @type {Map<string, Holiday>} */
+  const byDate = new Map(existing.filter((h) => !h.date.startsWith(`${year}-`)).map((h) => [h.date, h]));
+
+  for (const h of list) byDate.set(h.date, h);
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}

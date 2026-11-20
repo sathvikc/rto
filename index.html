@@ -163,8 +163,13 @@
         </section>
 
         <section class="card settings__group" aria-labelledby="s-holidays-heading">
-          <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
-          <p class="field__hint">One per line: <code>2026-11-26 Thanksgiving</code></p>
+          <div class="cluster cluster--between">
+            <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
+            <select id="holiday-year" class="select" aria-label="Holiday year"></select>
+          </div>
+          <p class="field__hint">
+            One per line: <code>2026-11-26 Thanksgiving</code>. Saving replaces this year only; other years are kept.
+          </p>
           <textarea
             id="s-holidays"
             class="textarea"
