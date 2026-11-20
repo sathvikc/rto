@@ -672,13 +672,12 @@
     list-style: none;
   }
 
-  .holiday-list__year {
-    padding: var(--space-3) 0 var(--space-1);
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-dim);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.04em;
+  .holiday-list__empty p {
+    margin-bottom: var(--space-3);
+  }
+
+  .holiday-list__empty p:last-child {
+    margin-bottom: 0;
   }
 
   .holiday-list__empty {
@@ -690,13 +689,13 @@
     text-align: center;
   }
 
-  /* One compact line per holiday: date (tap to pick) · name · delete. */
+  /* One holiday per row: calendar tile (tap to pick) · name + day · delete. */
   .holiday-row {
     display: grid;
-    grid-template-columns: 4.25rem minmax(0, 1fr) auto;
-    gap: var(--space-2);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
     align-items: center;
-    min-height: var(--tap-min);
+    padding-block: var(--space-2);
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -704,38 +703,60 @@
     border-bottom: 0;
   }
 
-  .holiday-row__when {
+  .holiday-row--past {
+    opacity: 0.55;
+  }
+
+  .holiday-row__tile {
     position: relative;
     display: flex;
     flex-direction: column;
-    line-height: 1.15;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-2);
     cursor: pointer;
   }
 
-  .holiday-row__day {
-    font-weight: 650;
+  .holiday-row__month {
+    color: var(--color-holiday);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .holiday-row__date {
+    margin-top: 2px;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
   }
 
-  .holiday-row__weekday {
-    color: var(--color-text-dim);
-    font-size: 0.75rem;
+  .holiday-row__tile:focus-within {
+    border-color: var(--color-accent);
   }
 
-  .holiday-row__when:focus-within .holiday-row__day {
-    color: var(--color-accent);
-  }
-
-  .holiday-row__what {
+  .holiday-row__body {
     display: flex;
     flex-direction: column;
+    gap: 1px;
     min-width: 0;
+  }
+
+  .holiday-row__meta {
+    color: var(--color-text-dim);
+    font-size: 0.8125rem;
   }
 
   .holiday-row__observed {
     color: var(--color-holiday);
-    font-size: 0.75rem;
-    line-height: 1.2;
   }
 
   .holiday-row__delete {

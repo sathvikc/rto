@@ -169,7 +169,7 @@
   }
 
   /* Holiday rows (Settings). The date input is invisible and covers the
-     date text, so tapping the text opens the native picker. 16px font
+     date tile, so tapping the tile opens the native picker. 16px font
      keeps iOS from zooming on focus. */
   .holiday-row__picker {
     position: absolute;
@@ -184,11 +184,12 @@
   .holiday-row__name {
     width: 100%;
     min-width: 0;
-    padding: var(--space-1) 0;
+    padding: 2px 0;
     border: 0;
     border-bottom: 1px solid transparent;
     background: none;
     font-size: var(--text-md);
+    font-weight: 600;
   }
 
   .holiday-row__name:focus {

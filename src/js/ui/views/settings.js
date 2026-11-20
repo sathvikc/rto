@@ -3,13 +3,13 @@ import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { show } from "lume-js/handlers";
 import { backupFileName } from "../../domain/backup.js";
-import { holidayDateOf, holidaysFrom, holidaysIn } from "../../domain/holidays.js";
+import { holidayDateOf, holidaysIn } from "../../domain/holidays.js";
 import { addDays, isDateKey } from "../../domain/dates.js";
 import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
 import { PRESET_GRACE, graceOf, roundTime } from "../../domain/rounding.js";
 import { roundingCheck } from "../../domain/verification.js";
-import { formatDay, formatShortDate, formatTime, plural, shortDate, weekdayShort } from "../../lib/format.js";
+import { formatDay, formatShortDate, formatTime, monthShort, plural, weekdayShort } from "../../lib/format.js";
 import {
   backupJson,
   data,
@@ -110,8 +110,8 @@ export function mountSettings() {
 
   const view = state({
     holidaySummary: "",
+    holidayTitle: "Company holidays",
     holidayRev: 0,
-    copyLabel: "",
     backupInfo: "",
     storageInfo: "",
     versionInfo: `RTO ${APP_VERSION}`,
@@ -207,8 +207,9 @@ export function mountSettings() {
   // on a separate list.
   const holidayList = byId("holiday-list");
 
-  /** This year's and later holidays (by real date); past years live in History. */
-  const upcomingHolidays = () => holidaysFrom(data.days, `${ui.today.slice(0, 4)}-01-01`);
+  /** This year's holidays (by real date). Other years live in History. */
+  const thisYear = () => ui.today.slice(0, 4);
+  const yearHolidays = () => holidaysIn(data.days, thisYear());
 
   /**
    * Copy is offered only once a new year has started and it has no
@@ -224,42 +225,50 @@ export function mountSettings() {
   };
 
   /** @param {import("../../domain/types.js").Day} d */
-  const holidayRow = (d) =>
-    html`<li class="holiday-row">
-      <label class="holiday-row__when">
-        <span class="holiday-row__day">${shortDate(holidayDateOf(d))}</span>
-        <span class="holiday-row__weekday">${weekdayShort(holidayDateOf(d))}</span>
-        <!-- Invisible native picker over the date text: tap the date to change it. -->
+  const holidayRow = (d) => {
+    const real = holidayDateOf(d);
+    const [, month, day] = real.split("-").map(Number);
+
+    return html`<li class="holiday-row${d.date < ui.today ? " holiday-row--past" : ""}">
+      <label class="holiday-row__tile">
+        <span class="holiday-row__month">${monthShort(month - 1)}</span>
+        <span class="holiday-row__date">${day}</span>
+        <!-- Invisible native picker over the tile: tap it to change the date. -->
         <input
           class="holiday-row__picker"
           type="date"
-          value="${holidayDateOf(d)}"
+          value="${real}"
+          min="${thisYear()}-01-01"
+          max="${thisYear()}-12-31"
           data-holiday-date="${d.date}"
           aria-label="Date of ${d.note ?? "holiday"}"
         />
       </label>
-      <span class="holiday-row__what">
+      <span class="holiday-row__body">
         <input
           class="holiday-row__name"
           type="text"
           value="${d.note ?? ""}"
           data-holiday-name="${d.date}"
-          placeholder="Name"
+          placeholder="Holiday name"
           autocomplete="off"
           aria-label="Holiday name"
         />
-        ${d.observedFrom && html`<span class="holiday-row__observed">Observed ${formatDay(d.date, { year: false })}</span>`}
+        <span class="holiday-row__meta">
+          ${weekdayShort(real)}${d.observedFrom && html` · <span class="holiday-row__observed">observed ${formatDay(d.date, { year: false })}</span>`}
+        </span>
       </span>
       <button
         type="button"
         class="holiday-row__delete"
         data-action="delete-holiday"
         data-date="${d.date}"
-        aria-label="Delete ${d.note ?? d.date}"
+        aria-label="Delete ${d.note ?? real}"
       >
         ×
       </button>
     </li>`;
+  };
 
   group.add(
     effect(() => {
@@ -269,31 +278,27 @@ export function mountSettings() {
 
       if (!loaded) return;
 
-      const list = upcomingHolidays();
+      const list = yearHolidays();
 
-      /** @type {Map<string, import("../../domain/types.js").Day[]>} */
-      const byYear = new Map();
+      view.holidayTitle = `Company holidays · ${thisYear()}`;
 
-      for (const d of list) {
-        const year = holidayDateOf(d).slice(0, 4);
-
-        byYear.set(year, [...(byYear.get(year) ?? []), d]);
-      }
+      // Copy is offered inside the empty state, only when a new year starts.
+      const offer = list.length ? null : copyOffer();
 
       render(
         holidayList,
         list.length
-          ? html`${[...byYear.entries()].map(
-              ([year, items]) =>
-                html`<li class="holiday-list__year" aria-hidden="true">${year}</li>
-                  ${items.map(holidayRow)}`,
-            )}`
-          : html`<li class="holiday-list__empty">No upcoming holidays yet.</li>`,
+          ? html`${list.map(holidayRow)}`
+          : html`<li class="holiday-list__empty">
+              <p>No holidays for ${thisYear()} yet.</p>
+              ${
+                offer &&
+                html`<button type="button" class="btn btn--fit btn--primary" data-action="copy-holidays">
+                  Copy ${offer.from} holidays
+                </button>`
+              }
+            </li>`,
       );
-
-      const offer = copyOffer();
-
-      view.copyLabel = offer ? `Copy ${offer.from} holidays to ${offer.to}` : "";
 
       const next = list.find((d) => d.date >= ui.today);
 
@@ -312,9 +317,11 @@ export function mountSettings() {
     const { holidayDate, holidayName } = el.dataset;
 
     const error = holidayDate
-      ? isDateKey(el.value)
-        ? updateHoliday(holidayDate, { date: el.value })
-        : "Pick a date."
+      ? !isDateKey(el.value)
+        ? "Pick a date."
+        : !el.value.startsWith(`${thisYear()}-`)
+          ? `Pick a date in ${thisYear()}.`
+          : updateHoliday(holidayDate, { date: el.value })
       : holidayName
         ? updateHoliday(holidayName, { name: el.value })
         : null;
@@ -328,14 +335,14 @@ export function mountSettings() {
   holidayList.addEventListener("change", onHolidayChange);
   group.add(() => holidayList.removeEventListener("change", onHolidayChange));
 
-  /** First date from today with nothing logged. */
+  /** First date from today, this year, with nothing logged. */
   const nextFreeDate = () => {
     const taken = new Set(data.days.filter((d) => !isBlankDay(d)).map((d) => d.date));
     let date = ui.today;
 
-    while (taken.has(date)) date = addDays(date, 1);
+    while (taken.has(date) && date.startsWith(thisYear())) date = addDays(date, 1);
 
-    return date;
+    return date.startsWith(thisYear()) ? date : null;
   };
 
   group.add(
@@ -454,6 +461,13 @@ export function mountSettings() {
     roundOut: (el) => updateSettings({ roundOut: { ...data.settings.roundOut, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
     "add-holiday": () => {
       const date = nextFreeDate();
+
+      if (!date) {
+        toast(`No free dates left in ${thisYear()}.`);
+
+        return;
+      }
+
       const { error, observed } = addHoliday(date, "");
 
       if (error || !observed) {
