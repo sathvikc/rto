@@ -168,6 +168,11 @@
     appearance: none;
   }
 
+  /* Same height as the segmented toggle beside it (History). */
+  .history__controls > .select {
+    min-height: 2.625rem;
+  }
+
   .textarea {
     width: 100%;
     min-height: 7.5rem;

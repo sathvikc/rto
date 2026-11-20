@@ -132,6 +132,16 @@
   }
 
   /* ---- History ---- */
+  /* Month picker + All days / Verified only: one row, wrapping on narrow
+     screens. The select's height is matched in forms.css. */
+  .history__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
   .history__meta {
     margin-top: var(--space-3);
     min-height: 2.375rem;
