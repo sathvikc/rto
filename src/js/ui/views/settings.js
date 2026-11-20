@@ -1,6 +1,6 @@
 /** Settings tab: theme, target, grouping, rounding, holidays, rounding check, backup. */
 import { batch, bindDom, effect, state } from "lume-js";
-import { createCleanupGroup } from "lume-js/addons";
+import { createCleanupGroup, watch } from "lume-js/addons";
 import { holidaysToText, parseHolidays } from "../../domain/backup.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
 import { PRESET_GRACE, graceOf, roundTime } from "../../domain/rounding.js";
@@ -104,6 +104,7 @@ export function mountSettings() {
   const view = state({
     holidayText: "",
     holidayMessage: "",
+    holidaySummary: "",
     backupInfo: "",
     storageInfo: "",
     versionInfo: `RTO ${APP_VERSION}`,
@@ -192,15 +193,29 @@ export function mountSettings() {
     }),
   );
 
-  // Refresh the holiday editor whenever the tab opens.
+  // Load the saved holidays into the editor when the tab opens or the data
+  // finishes loading. watch() tracks only the one key: an effect reading
+  // data.holidays would also re-run on save and wipe the confirmation.
+  const loadHolidayEditor = () => {
+    if (ui.tab !== "settings" || !data.loaded) return;
+
+    batch(() => {
+      view.holidayText = holidaysToText(data.holidays);
+      view.holidayMessage = "";
+    });
+  };
+
+  group.add(watch(ui, "tab", loadHolidayEditor));
+  group.add(watch(data, "loaded", loadHolidayEditor));
+
   group.add(
     effect(() => {
-      if (ui.tab !== "settings") return;
+      const { holidays } = data;
+      const next = holidays.find((h) => h.date >= ui.today);
 
-      batch(() => {
-        view.holidayText = holidaysToText(data.holidays);
-        view.holidayMessage = "";
-      });
+      view.holidaySummary = holidays.length
+        ? `${plural(holidays.length, "holiday")} saved${next ? ` · next: ${next.name || "holiday"}, ${formatDay(next.date, { year: false })}` : ""}`
+        : "No holidays saved.";
     }),
   );
 
@@ -320,7 +335,8 @@ export function mountSettings() {
 
       setHolidays(list);
       view.holidayText = holidaysToText(list);
-      view.holidayMessage = `Saved ${list.length}${invalid ? `; ${plural(invalid, "line")} not understood` : ""}.`;
+      view.holidayMessage = invalid ? `${plural(invalid, "line")} not understood (use YYYY-MM-DD Name).` : "";
+      toast(`Saved ${plural(list.length, "holiday")}`);
     },
     export: exportBackup,
     import: () => importInput.click(),
