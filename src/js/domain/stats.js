@@ -1,29 +1,25 @@
-/** @import { Day, Holiday, MonthSnapshots, MonthStat, Settings } from "./types.js" */
-import { addDays, groupEnd, groupKey, isWeekday, startOfWeekSunday } from "./dates.js";
+/** @import { Day, MonthStat, Settings } from "./types.js" */
+import { addDays, groupKey, isWeekday, startOfWeekSunday } from "./dates.js";
 import { countsInAverage, isOpen, presenceOf, resolveDay } from "./days.js";
 
 /** Longest a tracking month can run past its calendar month's 1st, days. */
 const GROUP_SCAN_DAYS = 40;
 
-/** @param {Holiday[]} holidays */
-const holidayDates = (holidays) => new Set(holidays.map((h) => h.date));
-
 /**
  * Monthly average and presence, recalculated from the daily records.
  *
  * Presence % = present days / Mon-Fri weekdays of the weeks that have at
- * least one record in the month, up to today, minus company holidays. A
+ * least one record in the month, up to today, minus Holiday days. A
  * weekday with no record inside a logged week counts as absent; a week
- * with no records at all is not counted.
+ * with no records at all is not counted. Only day records are read, so
+ * settings can't change a past month's numbers.
  *
  * @param {Day[]} days
- * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
  * @returns {MonthStat[]} oldest first
  */
-export function monthlyStats(days, holidays, settings, today) {
-  const holidaySet = holidayDates(holidays);
+export function monthlyStats(days, settings, today) {
   const currentKey = groupKey(today, settings.grouping);
 
   /** @type {Map<string, Day[]>} */
@@ -73,9 +69,8 @@ export function monthlyStats(days, holidays, settings, today) {
           if (date > today || groupKey(date, settings.grouping) !== key) continue;
 
           const rec = resolved.get(date);
-          const workedOnHoliday = rec && rec.day.status === "office" && rec.r.work !== null;
 
-          if (holidaySet.has(date) && !workedOnHoliday) continue;
+          if (rec?.day.status === "holiday") continue;
 
           denom++;
 
@@ -106,18 +101,16 @@ export function monthlyStats(days, holidays, settings, today) {
 /**
  * Office days left in a month that can still move the average: Mon-Fri,
  * from today on, in the month (a tracking month runs into the next
- * calendar month), not a company holiday, not already planned as
- * WFH/OOO/Sick, and not today when today is already logged.
+ * calendar month), not already a Holiday/WFH/OOO/Sick day, and not today
+ * when today is already logged.
  *
  * @param {string} monthKey
  * @param {Day[]} days
- * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
  * @returns {string[]} the dates, in order
  */
-export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
-  const holidaySet = holidayDates(holidays);
+export function workdaysLeftDates(monthKey, days, settings, today) {
   const byDate = new Map(days.map((d) => [d.date, d]));
   const first = `${monthKey}-01`;
   const last = addDays(first, GROUP_SCAN_DAYS);
@@ -126,7 +119,7 @@ export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
   const dates = [];
 
   for (let date = today > first ? today : first; date <= last; date = addDays(date, 1)) {
-    if (groupKey(date, settings.grouping) !== monthKey || !isWeekday(date) || holidaySet.has(date)) continue;
+    if (groupKey(date, settings.grouping) !== monthKey || !isWeekday(date)) continue;
 
     const day = byDate.get(date);
 
@@ -143,12 +136,10 @@ export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
  * How many of {@link workdaysLeftDates} there are.
  * @param {string} monthKey
  * @param {Day[]} days
- * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
  */
-export const workdaysLeft = (monthKey, days, holidays, settings, today) =>
-  workdaysLeftDates(monthKey, days, holidays, settings, today).length;
+export const workdaysLeft = (monthKey, days, settings, today) => workdaysLeftDates(monthKey, days, settings, today).length;
 
 /**
  * Average needed on each remaining day to finish the month at `target`.
@@ -187,74 +178,4 @@ export function combineStats(stats) {
     avg: sum.counted ? sum.total / sum.counted : null,
     presencePct: sum.denom ? Math.min(100, Math.round((sum.present / sum.denom) * 100)) : null,
   };
-}
-
-/**
- * Cheap, stable fingerprint of a month's day records (djb2 over JSON).
- * @param {Day[]} days  The month's days.
- */
-export function monthHash(days) {
-  const text = JSON.stringify([...days].sort((a, b) => a.date.localeCompare(b.date)).map((d) => [d.date, d.status, d.recorded, d.actual]));
-
-  let hash = 5381;
-
-  for (let i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
-
-  return `${days.length}:${(hash >>> 0).toString(36)}`;
-}
-
-/**
- * Freeze closed months. A month is closed once the timesheet covers its
- * last day. Its first computed stats are kept as a snapshot and shown from
- * then on, so later changes to holidays, rounding or other settings don't
- * rewrite history. Editing a day in that month (its hash changes)
- * recalculates and re-freezes it.
- *
- * @param {MonthStat[]} live      Stats computed from current data and settings.
- * @param {Day[]} days
- * @param {Settings} settings
- * @param {string} coverage       Last date the latest timesheet covers.
- * @param {MonthSnapshots} snapshots
- * @returns {{ stats: MonthStat[], snapshots: MonthSnapshots }}
- */
-export function freezeClosedMonths(live, days, settings, coverage, snapshots) {
-  /** @type {Map<string, Day[]>} */
-  const byMonth = new Map();
-
-  for (const day of days) {
-    const key = groupKey(day.date, settings.grouping);
-    const list = byMonth.get(key);
-
-    if (list) list.push(day);
-    else byMonth.set(key, [day]);
-  }
-
-  /** @type {MonthSnapshots} */
-  const next = {};
-  const prefix = `${settings.grouping}:`;
-
-  // Snapshots for the other grouping are kept as they are.
-  for (const [id, snap] of Object.entries(snapshots)) {
-    if (!id.startsWith(prefix)) next[id] = snap;
-  }
-
-  const stats = live.map((stat) => {
-    if (groupEnd(stat.key, settings.grouping) > coverage) return stat;
-
-    const id = prefix + stat.key;
-    const hash = monthHash(byMonth.get(stat.key) ?? []);
-    const saved = snapshots[id];
-
-    if (saved && saved.hash === hash) {
-      next[id] = saved;
-
-      return saved.stat;
-    }
-
-    next[id] = { hash, stat };
-
-    return stat;
-  });
-
-  return { stats, snapshots: next };
 }

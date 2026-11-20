@@ -1,19 +1,19 @@
 /**
  * Application state and every write to it.
  *
- *   data - the persisted document: days, holidays, settings
+ *   data - the persisted document: days (holidays included) and settings
  *   ui   - session state: clock, selections, toast
  *
  * Lume tracks top-level keys only, so arrays and objects are always
  * replaced, never mutated in place.
  */
-/** @import { Day, DayStatus, Entry, Holiday, MonthSnapshots, Settings } from "../domain/types.js" */
+/** @import { Day, DayStatus, Entry, Settings } from "../domain/types.js" */
 /** @import { PersistState, SaveTarget } from "./persistence.js" */
 import { batch, effect, state } from "lume-js";
 import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js";
 import { toDateKey } from "../domain/dates.js";
-import { EMPTY_ENTRY, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
-import { buildBackup, mergeDays, parseImport } from "../domain/backup.js";
+import { EMPTY_ENTRY, isBlankDay, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
+import { buildBackup, copyHolidays, holidayDay, mergeDays, parseImport } from "../domain/backup.js";
 import { fromMinutes, round2, timeOf, toMinutes } from "../domain/time.js";
 import { deleteDocument, loadDocument, requestPersistence, saveDocument } from "./persistence.js";
 import { formatTime } from "../lib/format.js";
@@ -26,9 +26,7 @@ const TOAST_WITH_ACTIONS_MS = 6000;
  * @typedef {object} DataState
  * @property {boolean} loaded
  * @property {Day[]} days  Newest first.
- * @property {Holiday[]} holidays
  * @property {Settings} settings
- * @property {MonthSnapshots} snapshots  Frozen stats of closed months.
  * @property {string | null} lastExportAt
  * @property {string | null} createdAt
  * @property {SaveTarget | ""} storage
@@ -39,9 +37,7 @@ const TOAST_WITH_ACTIONS_MS = 6000;
 const initialData = {
   loaded: false,
   days: [],
-  holidays: [],
   settings: { ...DEFAULT_SETTINGS },
-  snapshots: {},
   lastExportAt: null,
   createdAt: null,
   storage: "",
@@ -113,9 +109,7 @@ effect(() => {
   pendingDoc = {
     app: "rto",
     days: data.days,
-    holidays: data.holidays,
     settings: data.settings,
-    snapshots: data.snapshots,
     lastExportAt: data.lastExportAt,
     createdAt: data.createdAt,
   };
@@ -142,9 +136,7 @@ export async function loadState() {
   const meta = /** @type {{ lastExportAt?: unknown, createdAt?: unknown } | null} */ (doc);
 
   data.days = newestFirst((parsed?.days ?? []).map((d) => unverifyFuture(d, toDateKey(new Date()))));
-  data.holidays = parsed?.holidays ?? [];
   data.settings = { ...DEFAULT_SETTINGS, ...(parsed?.settings ?? {}) };
-  data.snapshots = parsed?.snapshots ?? {};
   data.lastExportAt = typeof meta?.lastExportAt === "string" ? meta.lastExportAt : null;
   data.createdAt = typeof meta?.createdAt === "string" ? meta.createdAt : new Date().toISOString();
   data.loaded = true;
@@ -413,15 +405,65 @@ export function updateSettings(patch) {
   data.settings = { ...data.settings, ...patch };
 }
 
-/** Drop all frozen months so they're recalculated with today's settings. */
-export function recalculatePastMonths() {
-  data.snapshots = {};
-  toast("Past months recalculated");
+// ---------------------------------------------------------------- holidays
+
+/**
+ * Add a company holiday as a Holiday day. A date you already logged keeps
+ * your record.
+ * @param {string} date
+ * @param {string} name
+ * @returns {string | null} error message
+ */
+export function addHoliday(date, name) {
+  const existing = findDay(date);
+
+  if (existing && !isBlankDay(existing)) return `${date} already has an entry. Edit that day instead.`;
+
+  saveDay(holidayDay(date, name));
+
+  return null;
 }
 
-/** @param {Holiday[]} list */
-export function setHolidays(list) {
-  data.holidays = list;
+/**
+ * Change a holiday's date or name.
+ * @param {string} date  Current date.
+ * @param {{ date?: string, name?: string }} change
+ * @returns {string | null} error message
+ */
+export function updateHoliday(date, change) {
+  const day = findDay(date);
+
+  if (day?.status !== "holiday") return "That holiday no longer exists.";
+
+  const nextDate = change.date ?? date;
+  const target = nextDate === date ? null : findDay(nextDate);
+
+  if (target && !isBlankDay(target)) return `${nextDate} already has an entry.`;
+
+  saveDay(holidayDay(nextDate, change.name ?? day.note ?? ""), nextDate === date ? null : date);
+
+  return null;
+}
+
+/**
+ * Copy one year's holidays to another (same month/day and names).
+ * @param {string} fromYear
+ * @param {string} toYear
+ * @returns {number} how many were added
+ */
+export function copyHolidaysToYear(fromYear, toYear) {
+  const added = copyHolidays(data.days, fromYear, toYear);
+
+  if (added.length) {
+    const at = new Date().toISOString();
+
+    data.days = mergeDays(
+      data.days,
+      added.map((d) => ({ ...d, updatedAt: at })),
+    ).days;
+  }
+
+  return added.length;
 }
 
 // ---------------------------------------------------------------- backup
@@ -450,7 +492,7 @@ export function importBackup(json) {
 
   const imp = parseImport(parsed);
 
-  if (!imp.days.length && !imp.holidays.length) throw new Error("No days found in that file.");
+  if (!imp.days.length) throw new Error("No days found in that file.");
 
   // The file wins: its days replace local days with the same date.
   const at = new Date().toISOString();
@@ -460,27 +502,15 @@ export function importBackup(json) {
 
   data.days = merged.days;
 
-  if (imp.holidays.length) {
-    const holidays = new Map(data.holidays.map((h) => [h.date, h]));
-
-    for (const h of imp.holidays) holidays.set(h.date, h);
-    data.holidays = [...holidays.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }
-
   updateSettings(imp.settings);
 
-  // The file's frozen months win too.
-  if (Object.keys(imp.snapshots).length) data.snapshots = { ...data.snapshots, ...imp.snapshots };
-
-  return { added: merged.added, replaced: merged.replaced, holidays: imp.holidays.length, skipped: imp.skipped };
+  return { added: merged.added, replaced: merged.replaced, holidays: imp.holidays, skipped: imp.skipped };
 }
 
 export async function eraseEverything() {
   await deleteDocument();
   data.days = [];
-  data.holidays = [];
   data.settings = { ...DEFAULT_SETTINGS };
-  data.snapshots = {};
   data.lastExportAt = null;
   await flush();
 }

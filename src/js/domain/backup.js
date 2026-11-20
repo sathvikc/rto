@@ -1,6 +1,7 @@
-/** @import { Backup, Day, DayStatus, Entry, Holiday, MonthSnapshots, RoundingRule, Settings } from "./types.js" */
+/** @import { Backup, Day, DayStatus, Entry, Holiday, RoundingRule, Settings } from "./types.js" */
 import { BACKUP_VERSION, STATUSES } from "./constants.js";
 import { isDateKey, pad2, toDateKey } from "./dates.js";
+import { isBlankDay } from "./days.js";
 import { isTime, round2 } from "./time.js";
 
 const ROUNDING_MODES = ["down", "up", "nearest", "custom", "none"];
@@ -88,9 +89,8 @@ function dayFromFlatRow(raw, date) {
 /**
  * @typedef {object} ParsedImport
  * @property {Day[]} days
- * @property {Holiday[]} holidays
+ * @property {number} holidays  Holidays converted from an older backup's list.
  * @property {Partial<Settings>} settings
- * @property {MonthSnapshots} snapshots
  * @property {number} skipped  Rows without a valid date.
  */
 
@@ -106,7 +106,7 @@ export function parseImport(json) {
   if (!rows) throw new Error("No days found in that file.");
 
   /** @type {ParsedImport} */
-  const out = { days: [], holidays: [], settings: {}, snapshots: {}, skipped: 0 };
+  const out = { days: [], holidays: 0, settings: {}, skipped: 0 };
 
   for (const raw of rows) {
     if (!isObject(raw) || !isDateKey(raw.date)) {
@@ -120,15 +120,19 @@ export function parseImport(json) {
   }
 
   if (isObject(json)) {
+    // Older versions kept holidays as a separate list: turn them into days.
     if (Array.isArray(json.holidays)) {
-      out.holidays = json.holidays
+      const listed = json.holidays
         .filter((h) => isObject(h) && isDateKey(h.date))
         .map((h) => ({ date: /** @type {string} */ (h.date), name: text(h.name) ?? "" }));
+
+      const converted = holidaysAsDays(out.days, listed);
+
+      out.days = converted.days;
+      out.holidays = converted.added;
     }
 
     if (isObject(json.settings)) out.settings = settingsFrom(json.settings);
-
-    if (isObject(json.snapshots)) out.snapshots = snapshotsFrom(json.snapshots);
   }
 
   return out;
@@ -170,70 +174,18 @@ function settingsFrom(s) {
 }
 
 /**
- * @param {{ days: Day[], holidays: Holiday[], settings: Settings, snapshots: MonthSnapshots, createdAt: string | null }} doc
+ * @param {{ days: Day[], settings: Settings, createdAt: string | null }} doc
  * @returns {Backup}
  */
-export function buildBackup({ days, holidays, settings, snapshots, createdAt }) {
+export function buildBackup({ days, settings, createdAt }) {
   return {
     app: "rto",
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     createdAt,
     settings,
-    holidays,
-    snapshots,
     days: [...days].sort((a, b) => a.date.localeCompare(b.date)),
   };
-}
-
-/**
- * "2026-11-26 Thanksgiving" per line -> sorted, de-duplicated holidays.
- * @param {string} input
- * @returns {{ list: Holiday[], invalid: number }}
- */
-export function parseHolidays(input) {
-  /** @type {Map<string, string>} */
-  const byDate = new Map();
-  let invalid = 0;
-
-  for (const line of input.split(/\r?\n/)) {
-    const trimmed = line.trim();
-
-    if (!trimmed) continue;
-
-    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})\s*[,\-–:|]?\s*(.*)$/);
-
-    if (!match || !isDateKey(match[1])) {
-      invalid++;
-      continue;
-    }
-
-    byDate.set(match[1], match[2].trim());
-  }
-
-  const list = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, name]) => ({ date, name }));
-
-  return { list, invalid };
-}
-
-/** @param {Holiday[]} list */
-export const holidaysToText = (list) => list.map((h) => (h.name ? `${h.date} ${h.name}` : h.date)).join("\n");
-
-/**
- * Replace one year's holidays with `list`, keeping every other year. Lines
- * dated in another year are merged into that year (same date replaced).
- * @param {Holiday[]} existing
- * @param {string} year "YYYY"
- * @param {Holiday[]} list
- * @returns {Holiday[]} sorted
- */
-export function replaceHolidaysForYear(existing, year, list) {
-  /** @type {Map<string, Holiday>} */
-  const byDate = new Map(existing.filter((h) => !h.date.startsWith(`${year}-`)).map((h) => [h.date, h]));
-
-  for (const h of list) byDate.set(h.date, h);
-
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -266,42 +218,61 @@ export function mergeDays(local, incoming) {
  */
 export const backupFileName = (at) => `rto-backup-${toDateKey(at)}-${pad2(at.getHours())}${pad2(at.getMinutes())}.json`;
 
-const STAT_NUMBERS = ["total", "counted", "present", "denom", "wfh", "unverified", "unverifiedAvg"];
+// ---------------------------------------------------------------- holidays
 
 /**
- * Frozen month stats from a backup; anything malformed is dropped (that
- * month is then simply recalculated).
- * @param {Record<string, unknown>} raw
- * @returns {MonthSnapshots}
+ * A Holiday day record.
+ * @param {string} date
+ * @param {string} name
+ * @returns {Day}
  */
-function snapshotsFrom(raw) {
-  /** @type {MonthSnapshots} */
-  const out = {};
+export const holidayDay = (date, name) => ({ date, status: "holiday", recorded: null, actual: null, note: name.trim() || null });
 
-  for (const [id, snap] of Object.entries(raw)) {
-    if (!/^(tracking|calendar):\d{4}-\d{2}$/.test(id) || !isObject(snap) || typeof snap.hash !== "string" || !isObject(snap.stat)) continue;
+/**
+ * Turn a list of holidays into Holiday days. A date you already logged
+ * (hours, PTO, another day type) keeps your record; a blank one is replaced.
+ * @param {Day[]} days
+ * @param {Holiday[]} holidays
+ * @returns {{ days: Day[], added: number }}
+ */
+export function holidaysAsDays(days, holidays) {
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  let added = 0;
 
-    const st = snap.stat;
+  for (const h of holidays) {
+    const existing = byDate.get(h.date);
 
-    if (typeof st.key !== "string" || !STAT_NUMBERS.every((k) => num(st[k]) !== null)) continue;
+    if (existing && !isBlankDay(existing)) continue;
 
-    out[id] = {
-      hash: snap.hash,
-      stat: {
-        key: st.key,
-        total: /** @type {number} */ (st.total),
-        counted: /** @type {number} */ (st.counted),
-        avg: num(st.avg),
-        present: /** @type {number} */ (st.present),
-        denom: /** @type {number} */ (st.denom),
-        wfh: /** @type {number} */ (st.wfh),
-        presencePct: num(st.presencePct),
-        unverified: /** @type {number} */ (st.unverified),
-        unverifiedAvg: /** @type {number} */ (st.unverifiedAvg),
-        partial: false,
-      },
-    };
+    byDate.set(h.date, holidayDay(h.date, h.name));
+    added++;
   }
 
-  return out;
+  return { days: [...byDate.values()], added };
+}
+
+/**
+ * One year's Holiday days, in date order.
+ * @param {Day[]} days
+ * @param {string} year "YYYY"
+ */
+export const holidaysIn = (days, year) =>
+  days.filter((d) => d.status === "holiday" && d.date.startsWith(`${year}-`)).sort((a, b) => a.date.localeCompare(b.date));
+
+/**
+ * Next year's holidays from this year's: same month and day, same names, so
+ * only the dates that move need editing. Dates that don't exist (Feb 29) or
+ * already have a record are skipped.
+ * @param {Day[]} days
+ * @param {string} fromYear
+ * @param {string} toYear
+ * @returns {Day[]} the new Holiday days
+ */
+export function copyHolidays(days, fromYear, toYear) {
+  const taken = new Set(days.filter((d) => !isBlankDay(d)).map((d) => d.date));
+
+  return holidaysIn(days, fromYear)
+    .map((d) => ({ date: `${toYear}${d.date.slice(4)}`, name: d.note ?? "" }))
+    .filter((h) => isDateKey(h.date) && !taken.has(h.date))
+    .map((h) => holidayDay(h.date, h.name));
 }

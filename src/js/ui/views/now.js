@@ -92,7 +92,10 @@ export function mountNow() {
         return; // The ticking effect fills in the detail line.
       }
 
-      if (todayDay && todayDay.status !== "office") {
+      if (todayHoliday) {
+        view.statusLine = "Company holiday";
+        view.detailLine = todayHoliday.note ?? "Enjoy the day off";
+      } else if (todayDay && todayDay.status !== "office") {
         view.statusLine = `Today: ${STATUS_LABEL[todayDay.status]}`;
         view.detailLine = "Not an office day";
       } else if (todayDay?.recorded?.start && todayDay.recorded.end) {
@@ -103,7 +106,7 @@ export function mountNow() {
         view.detailStatic = false;
       } else {
         view.statusLine = "Off the clock";
-        view.detailLine = todayHoliday ? `Company holiday${todayHoliday.name ? `: ${todayHoliday.name}` : ""}` : "Not clocked in";
+        view.detailLine = "Not clocked in";
       }
     }),
   );
@@ -212,6 +215,12 @@ export function mountNow() {
         return;
       }
 
+      if (todayHoliday) {
+        plan.quick = "";
+
+        return;
+      }
+
       if (todayDay && todayDay.status !== "office") {
         plan.quick = html`<span class="text-dim text-small">Marked ${STATUS_LABEL[todayDay.status]} today.</span>
           <button type="button" class="link-btn" data-action="today-status" data-value="office">Undo</button>`.value;
@@ -219,7 +228,7 @@ export function mountNow() {
         return;
       }
 
-      const late = isWeekday(ui.today) && !todayHoliday && minutesOf(now) >= LATE_PROMPT_MINUTES;
+      const late = isWeekday(ui.today) && minutesOf(now) >= LATE_PROMPT_MINUTES;
 
       plan.quick = html`<span class="text-dim text-small">${late ? "Not clocked in yet." : "Not in the office today?"}</span>
         <span class="cluster">

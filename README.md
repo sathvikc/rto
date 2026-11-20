@@ -22,11 +22,10 @@ Screenshots use generated demo data.
 - **Leave-by table** while you're on the clock: leave now, on pace for the month, or after a full day, with today's timesheet hours and your month average for each.
 - **Forgotten clock-out guard**: a shift left open overnight asks when you left instead of becoming a 20-hour day.
 - **Quick day entry** with Today/Yesterday, your usual times in one tap, and extras (PTO, timesheet, note) tucked under More.
-- **Day types:** Office, WFH, OOO and Sick.
+- **Day types:** Office, WFH, OOO, Sick and Holiday.
 - **Your entry vs. the official timesheet.** Office days can hold both. Unverified days are marked `*`; a **Matches? / ✓ Matched** toggle on each card (and a weekly review sheet) confirms them. WFH, OOO and Sick days count as verified automatically.
 - **Rounding rules** on a 15-minute grid: Down, Up, Nearest, None, or Custom with a grace window. A **rounding check** shows how well the rules predict the timesheet.
-- **Company holidays**, kept per year and skipped for workdays left and presence.
-- **Frozen past months**: once the timesheet covers a month, its numbers stay as they were even if holidays or settings change later (recalculate on demand).
+- **Company holidays** are days in your history (type Holiday), so changing next year's list never rewrites the past. Add them in Settings with a date picker, or copy last year's and adjust the dates.
 - **Home / History / Settings tabs.** Home shows today and the current month (average, presence, the average still needed). History has any month's stats, charts and the day list.
 - **Verified only** view in History: the month's numbers from timesheet-confirmed days, up to the date the latest timesheet covers, to compare with the official dashboard.
 - **How it works** help in Settings.
@@ -60,14 +59,14 @@ The Home Screen app keeps **its own storage**, separate from browser tabs. Impor
       "recorded": { "start": "08:57", "end": "16:18", "hours": null, "pto": null },
       "actual": { "start": "08:45", "end": "16:15", "hours": 7.5, "pto": null },
       "note": null
-    }
+    },
+    { "date": "2026-01-01", "status": "holiday", "recorded": null, "actual": null, "note": "New Year's Day" }
   ],
-  "holidays": [{ "date": "2026-01-01", "name": "New Year's Day" }],
   "settings": { "grouping": "tracking", "roundIn": { "mode": "down" }, "roundOut": { "mode": "custom", "grace": 4 }, "target": 8 }
 }
 ```
 
-- `status` is one of `office`, `wfh`, `ooo` or `sick`.
+- `status` is one of `office`, `wfh`, `ooo`, `sick` or `holiday` (the holiday's name is the `note`). Older backups with a separate `holidays` list are converted on import.
 - `recorded` is your own entry, with raw times.
 - `actual` is the official timesheet. When present, the day is verified.
 - Times are 24-hour `HH:MM`. `hours` is used only when there are no times. `null` means blank.

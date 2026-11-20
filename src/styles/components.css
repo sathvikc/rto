@@ -664,6 +664,51 @@
     color: var(--color-text);
   }
 
+  .holiday-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .holiday-list__empty {
+    padding: var(--space-3);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  /* Name on top (full width), date below, delete on the right. */
+  .holiday-row {
+    display: grid;
+    grid-template-areas:
+      "name delete"
+      "date delete";
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-1) var(--space-2);
+    align-items: center;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+  }
+
+  .holiday-row__name {
+    grid-area: name;
+  }
+
+  .holiday-row__date {
+    grid-area: date;
+  }
+
+  .holiday-row .icon-btn {
+    grid-area: delete;
+  }
+
   .settings__rule {
     margin-top: var(--space-4);
   }

@@ -11,7 +11,7 @@ import { data, toggleMatch, ui, verifyAsPredicted } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { byId, html, render, segmentButtons } from "../dom.js";
 
-/** @import { Day, Holiday, Settings } from "../../domain/types.js" */
+/** @import { Day, Settings } from "../../domain/types.js" */
 /** @import { HistoryFilter } from "../../state/store.js" */
 /** @import { SafeHtml } from "../dom.js" */
 
@@ -25,10 +25,9 @@ const FILTER_OPTIONS = /** @type {const} */ ([
  * @param {Day} day
  * @param {Settings} settings
  * @param {string} today
- * @param {Holiday | undefined} holiday
  * @returns {SafeHtml}
  */
-function dayCard(day, settings, today, holiday) {
+function dayCard(day, settings, today) {
   const r = resolveDay(day, settings);
   const { recorded: rec, actual: act } = day;
   const isPast = day.date <= today;
@@ -43,7 +42,9 @@ function dayCard(day, settings, today, holiday) {
         ? r.total === null
           ? "No hours"
           : "No times"
-        : STATUS_LABEL[day.status];
+        : day.status === "holiday"
+          ? (day.note ?? "Company holiday")
+          : STATUS_LABEL[day.status];
 
   /** @type {Array<SafeHtml | string>} */
   const details = [];
@@ -78,7 +79,6 @@ function dayCard(day, settings, today, holiday) {
       <div class="day-card__badges">
         ${day.date === today && html`<span class="badge">Today</span>`}
         ${day.status !== "office" && html`<span class="badge badge--${day.status}">${STATUS_LABEL[day.status]}</span>`}
-        ${holiday && html`<span class="badge badge--holiday">${holiday.name || "Holiday"}</span>`}
         ${r.open && html`<span class="badge badge--open">In progress</span>`}
       </div>
     </div>
@@ -87,7 +87,7 @@ function dayCard(day, settings, today, holiday) {
       ${r.total !== null ? html`<span class="day-card__hours">${formatHours(r.total)}${star}</span>` : star}
     </div>
     ${details.map((d) => html`<p class="text-dim text-small">${d}</p>`)}
-    ${day.note && html`<p class="day-card__note text-small">${day.note}</p>`}
+    ${day.note && day.status !== "holiday" && html`<p class="day-card__note text-small">${day.note}</p>`}
     <div class="cluster day-card__actions">
       <button type="button" class="btn btn--pill btn--small" data-action="edit-day" data-date="${day.date}">Edit</button>
       ${
@@ -124,7 +124,7 @@ export function mountHistory() {
     effect(() => {
       const { days, settings } = data;
       const { filter, yearSel, today } = ui;
-      const { selKey, holidayByDate } = model;
+      const { selKey } = model;
 
       render(filterEl, html`${segmentButtons(FILTER_OPTIONS, filter, "history-filter")}`);
 
@@ -173,7 +173,7 @@ export function mountHistory() {
           caption.textContent = `${caption.textContent} · ${plural(hidden, "day")} hidden (unverified or after ${formatDay(coverage, { year: false })})`;
       }
 
-      list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today, holidayByDate.get(d.date)) }));
+      list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today) }));
       empty.hidden = rows.length > 0;
       empty.textContent = days.length ? "No days in this range." : "Nothing here yet. Clock in, or add a day with Manual entry.";
     }),

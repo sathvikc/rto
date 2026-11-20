@@ -21,6 +21,7 @@ const STATUS_HINT = {
   wfh: "Presence 0. Not counted in your average.",
   ooo: "Full day out: presence 1, not counted in your average. Working part of the day? Choose Office and add PTO instead.",
   sick: "Sick day: presence 1, not counted in your average. Working part of the day? Choose Office and add PTO instead.",
+  holiday: "Company holiday: not a workday, so it's left out of presence and your average. Put its name in the note.",
 };
 
 const STATUS_OPTIONS = STATUSES.map((s) => /** @type {const} */ ([s, STATUS_LABEL[s]]));
@@ -118,7 +119,7 @@ export function mountDayDialog() {
 
       form.statusHint = STATUS_HINT[status];
       form.showTimes = office;
-      form.showPto = status !== "wfh";
+      form.showPto = status !== "wfh" && status !== "holiday";
       form.ptoLabelHint = office ? "(optional, for a partial day off)" : "";
 
       // A timesheet can only confirm a day that has happened.

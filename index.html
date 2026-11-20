@@ -168,33 +168,13 @@
             <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
             <select id="holiday-year" class="select" aria-label="Holiday year"></select>
           </div>
-          <p class="field__hint">Pick a year, one holiday per line: <code>2026-11-26 Thanksgiving</code>. Saving changes that year only.</p>
-          <textarea
-            id="s-holidays"
-            class="textarea"
-            rows="6"
-            data-bind="holidayText"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
-            aria-labelledby="s-holidays-heading"
-          ></textarea>
+          <p class="field__hint">Holidays are saved as days, so History keeps them even when you change next year's list.</p>
+          <ul id="holiday-list" class="holiday-list" aria-labelledby="s-holidays-heading"></ul>
           <div class="cluster cluster--between">
-            <span class="text-small text-danger" role="status" data-bind="holidayMessage"></span>
-            <button type="button" class="btn btn--fit" data-action="save-holidays">Save holidays</button>
+            <button type="button" class="btn btn--fit" data-action="copy-holidays" data-show="copyLabel" data-bind="copyLabel"></button>
+            <button type="button" class="btn btn--fit btn--primary push" data-action="add-holiday">+ Add holiday</button>
           </div>
           <p class="field__hint" data-bind="holidaySummary"></p>
-        </section>
-
-        <section class="card settings__group" aria-labelledby="s-frozen-heading">
-          <h3 id="s-frozen-heading" class="settings__heading">Past months</h3>
-          <p class="field__hint">
-            Once the timesheet covers a whole month, its numbers are frozen. Changing holidays, rounding or other settings won't change
-            them; editing a day in that month does. <span data-bind="frozenInfo"></span>
-          </p>
-          <div class="cluster cluster--end">
-            <button type="button" class="btn btn--fit" data-action="recalculate">Recalculate past months</button>
-          </div>
         </section>
 
         <section class="card settings__group" aria-labelledby="s-backup-heading">
@@ -269,8 +249,8 @@
               like the timesheet. <b>Calendar month</b> uses each day's own month.
             </p>
             <p>
-              Months the timesheet has fully covered are frozen: later changes to holidays or settings don't rewrite them (Settings → Past
-              months).
+              Company holidays are days in your history, type <b>Holiday</b>. Add them in Settings (copy last year's and adjust the dates),
+              or set any day's type to Holiday. They don't count as workdays.
             </p>
             <p>
               Presence = present days ÷ weekdays in the weeks you logged, not counting company holidays. "Office days left" skips weekends,

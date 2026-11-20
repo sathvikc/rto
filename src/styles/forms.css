@@ -168,6 +168,29 @@
     appearance: none;
   }
 
+  /* Holiday rows (Settings): borderless fields inside the bordered row. */
+  .holiday-row .input {
+    min-height: 2.25rem;
+    padding: var(--space-1) var(--space-2);
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .holiday-row .input:focus {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .holiday-row .holiday-row__name {
+    font-weight: 600;
+  }
+
+  .holiday-row .holiday-row__date {
+    max-width: 11rem;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+  }
+
   /* Same height as the segmented toggle beside it (History). */
   .history__controls > .select {
     min-height: 2.625rem;

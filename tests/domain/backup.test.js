@@ -4,51 +4,48 @@ import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
 import {
   backupFileName,
   buildBackup,
-  holidaysToText,
+  copyHolidays,
+  holidayDay,
+  holidaysAsDays,
+  holidaysIn,
   mergeDays,
-  parseHolidays,
   parseImport,
-  replaceHolidaysForYear,
 } from "../../src/js/domain/backup.js";
-import { office } from "../helpers.js";
+import { office, plain } from "../helpers.js";
 
 describe("parseImport", () => {
   test("round-trips this app's backup", () => {
-    const days = [office("2026-11-16", "08:58", "16:20")];
-
-    const snapshots = {
-      "tracking:2026-10": {
-        hash: "5:abc",
-        stat: {
-          key: "2026-10",
-          total: 40,
-          counted: 5,
-          avg: 8,
-          present: 5,
-          denom: 5,
-          wfh: 0,
-          presencePct: 100,
-          unverified: 0,
-          unverifiedAvg: 0,
-          partial: false,
-        },
-      },
-    };
-
-    const backup = buildBackup({
-      days,
-      holidays: [{ date: "2026-11-26", name: "Thanksgiving" }],
-      settings: DEFAULT_SETTINGS,
-      snapshots,
-      createdAt: null,
-    });
-
+    const days = [office("2026-11-16", "08:58", "16:20"), holidayDay("2026-11-26", "Thanksgiving")];
+    const backup = buildBackup({ days, settings: DEFAULT_SETTINGS, createdAt: null });
     const parsed = parseImport(JSON.parse(JSON.stringify(backup)));
 
     assert.deepEqual(parsed.days, days);
-    assert.equal(parsed.holidays.length, 1);
     assert.deepEqual(parsed.settings.roundOut, DEFAULT_SETTINGS.roundOut);
-    assert.deepEqual(parsed.snapshots, snapshots);
+  });
+
+  test("an older backup's holiday list becomes Holiday days; logged days are kept", () => {
+    const parsed = parseImport({
+      days: [
+        office("2026-11-26", "09:00", "12:00"), // worked on the holiday: keep
+        plain("2026-02-16", "office"), // blank row: becomes the holiday
+      ],
+      holidays: [
+        { date: "2026-11-26", name: "Thanksgiving" },
+        { date: "2026-02-16", name: "Presidents Day" },
+        { date: "2026-12-25", name: "Christmas Day" },
+        { date: "nope" },
+      ],
+    });
+
+    assert.equal(parsed.holidays, 2);
+    assert.equal(parsed.days.find((d) => d.date === "2026-11-26")?.status, "office");
+
+    assert.deepEqual(
+      parsed.days.find((d) => d.date === "2026-02-16"),
+      holidayDay("2026-02-16", "Presidents Day"),
+    );
+
+    assert.equal(parsed.days.find((d) => d.date === "2026-12-25")?.note, "Christmas Day");
   });
 
   test("flat rows: timesheet rows verified, punches unverified with raw times", () => {
@@ -75,50 +72,55 @@ describe("parseImport", () => {
 
   test("rejects documents without days and ignores invalid settings", () => {
     assert.throws(() => parseImport({ nope: true }), /No days/);
+
     const parsed = parseImport({ days: [], settings: { grouping: "weekly", target: 99, roundIn: { mode: "sideways" } } });
 
     assert.deepEqual(parsed.settings, {});
   });
 });
 
-test("holiday text round-trips, sorted and de-duplicated", () => {
-  const { list, invalid } = parseHolidays(
-    "2026-11-27 Day after\n2026-11-26 Thanksgiving\n\nnope\n2026-02-30 Bad\n2026-11-26 Thanksgiving Day",
-  );
+describe("holidays as days", () => {
+  test("holidaysAsDays replaces blank days only", () => {
+    const { days, added } = holidaysAsDays(
+      [plain("2026-01-01", "office"), plain("2026-01-19", "wfh")],
+      [
+        { date: "2026-01-01", name: "New Year's Day" },
+        { date: "2026-01-19", name: "MLK Day" },
+      ],
+    );
 
-  assert.deepEqual(
-    list.map((h) => h.date),
-    ["2026-11-26", "2026-11-27"],
-  );
+    assert.equal(added, 1);
 
-  assert.equal(list[0].name, "Thanksgiving Day");
-  assert.equal(invalid, 2);
-  assert.equal(holidaysToText(list), "2026-11-26 Thanksgiving Day\n2026-11-27 Day after");
-});
+    assert.deepEqual(
+      days.map((d) => d.status),
+      ["holiday", "wfh"],
+    );
+  });
 
-test("saving one year's holidays keeps the other years", () => {
-  const existing = [
-    { date: "2026-11-26", name: "Thanksgiving" },
-    { date: "2026-12-25", name: "Christmas Day" },
-    { date: "2027-01-01", name: "Old" },
-  ];
+  test("holidaysIn lists one year in date order", () => {
+    const days = [
+      holidayDay("2026-12-25", "Christmas"),
+      office("2026-11-02", "09:00", "17:00"),
+      holidayDay("2026-01-01", "New Year"),
+      holidayDay("2027-01-01", ""),
+    ];
 
-  const next = replaceHolidaysForYear(existing, "2027", [
-    { date: "2027-01-01", name: "New Year's Day" },
-    { date: "2027-11-25", name: "Thanksgiving" },
-    { date: "2026-12-24", name: "Christmas Eve" },
-  ]);
+    assert.deepEqual(
+      holidaysIn(days, "2026").map((d) => d.date),
+      ["2026-01-01", "2026-12-25"],
+    );
+  });
 
-  assert.deepEqual(
-    next.map((h) => `${h.date} ${h.name}`),
-    [
-      "2026-11-26 Thanksgiving",
-      "2026-12-24 Christmas Eve",
-      "2026-12-25 Christmas Day",
-      "2027-01-01 New Year's Day",
-      "2027-11-25 Thanksgiving",
-    ],
-  );
+  test("copyHolidays: same month/day and names next year; skips taken and impossible dates", () => {
+    const days = [
+      holidayDay("2024-02-29", "Leap"),
+      holidayDay("2024-11-28", "Thanksgiving"),
+      holidayDay("2024-12-25", "Christmas"),
+      holidayDay("2025-12-25", "Christmas"), // already there
+    ];
+
+    assert.deepEqual(copyHolidays(days, "2024", "2025"), [holidayDay("2025-11-28", "Thanksgiving")]);
+  });
 });
 
 test("import merge: the file wins on the same date, other local days are kept", () => {
@@ -137,13 +139,4 @@ test("import merge: the file wins on the same date, other local days are kept", 
 test("backup file name has the local date and time", () => {
   assert.equal(backupFileName(new Date(2026, 10, 20, 15, 32)), "rto-backup-2026-11-20-1532.json");
   assert.equal(backupFileName(new Date(2026, 0, 5, 9, 4)), "rto-backup-2026-01-05-0904.json");
-});
-
-test("malformed snapshots are dropped on import", () => {
-  const parsed = parseImport({
-    days: [],
-    snapshots: { "tracking:2026-10": { hash: 1 }, "weekly:2026-10": {}, "calendar:2026-09": { hash: "x", stat: { key: "2026-09" } } },
-  });
-
-  assert.deepEqual(parsed.snapshots, {});
 });

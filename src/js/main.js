@@ -69,7 +69,20 @@ async function start() {
   app.add(() => clearInterval(timer));
 
   // iOS can suspend a backgrounded app at any time: save on the way out.
-  const onVisibility = () => (document.visibilityState === "hidden" ? flush() : tick());
+  const onVisibility = () => {
+    if (document.visibilityState !== "hidden") {
+      tick();
+
+      return;
+    }
+
+    // Commit a field still being edited (inputs save on "change", which
+    // fires on blur), then save once that change has gone through.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+
+    queueMicrotask(() => void flush());
+  };
+
   const onPageHide = () => void flush();
 
   document.addEventListener("visibilitychange", onVisibility);

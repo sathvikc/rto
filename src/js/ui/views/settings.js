@@ -1,7 +1,9 @@
-/** Settings tab: theme, target, grouping, rounding, holidays, rounding check, backup. */
-import { batch, bindDom, effect, state } from "lume-js";
-import { createCleanupGroup, watch } from "lume-js/addons";
-import { backupFileName, holidaysToText, parseHolidays, replaceHolidaysForYear } from "../../domain/backup.js";
+/** Settings tab: theme, target, grouping, rounding, company holidays, rounding check, backup, help. */
+import { bindDom, effect, state } from "lume-js";
+import { createCleanupGroup } from "lume-js/addons";
+import { backupFileName, holidaysIn } from "../../domain/backup.js";
+import { addDays, isDateKey } from "../../domain/dates.js";
+import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
 import { PRESET_GRACE, graceOf, roundTime } from "../../domain/rounding.js";
 import { roundingCheck } from "../../domain/verification.js";
@@ -12,9 +14,11 @@ import {
   eraseEverything,
   flush,
   importBackup,
-  recalculatePastMonths,
   markExported,
-  setHolidays,
+  addHoliday,
+  copyHolidaysToYear,
+  deleteDay,
+  updateHoliday,
   toast,
   ui,
   updateSettings,
@@ -103,11 +107,10 @@ export function mountSettings() {
   const importInput = byId("import-file", HTMLInputElement);
 
   const view = state({
-    holidayText: "",
-    holidayMessage: "",
     holidaySummary: "",
     holidayYear: "",
-    frozenInfo: "",
+    holidayRev: 0,
+    copyLabel: "",
     backupInfo: "",
     storageInfo: "",
     versionInfo: `RTO ${APP_VERSION}`,
@@ -179,7 +182,8 @@ export function mountSettings() {
 
   group.add(
     effect(() => {
-      const { lastExportAt, days, holidays, storage, persist } = data;
+      const { lastExportAt, days, storage, persist } = data;
+      const holidays = days.filter((d) => d.status === "holiday");
       const exported = lastExportAt ? `Last export ${formatShortDate(lastExportAt)}.` : "Never exported.";
 
       view.backupInfo = `${plural(days.length, "day")} and ${plural(holidays.length, "holiday")} on this device. ${exported} Import: the file wins. Its days replace the same dates here; other days are kept.`;
@@ -196,68 +200,123 @@ export function mountSettings() {
     }),
   );
 
-  // ---- Company holidays: edited one year at a time ----
+  // ---- Company holidays ----
+  // Holidays are Holiday day records: this editor adds, edits and deletes
+  // them directly, so History (which reads only day records) never depends
+  // on a separate list.
   const yearSelect = byId("holiday-year", HTMLSelectElement);
+  const holidayList = byId("holiday-list");
 
   /** Years to offer: any with holidays, plus this year and next. */
   const holidayYears = () => {
     const thisYear = Number(ui.today.slice(0, 4));
-    const years = new Set([String(thisYear), String(thisYear + 1), ...data.holidays.map((h) => h.date.slice(0, 4))]);
+    const years = new Set([String(thisYear), String(thisYear + 1)]);
+
+    for (const d of data.days) if (d.status === "holiday") years.add(d.date.slice(0, 4));
 
     return [...years].sort();
   };
 
-  /** @param {string} year */
-  const holidaysOf = (year) => data.holidays.filter((h) => h.date.startsWith(`${year}-`));
+  group.add(
+    effect(() => {
+      const { days, loaded } = data;
+      const year = view.holidayYear || ui.today.slice(0, 4);
 
-  // Load the chosen year into the editor when the tab opens, the data
-  // finishes loading, or the year changes. watch() tracks only that one key:
-  // an effect reading data.holidays would also re-run on save and wipe the
-  // confirmation.
-  const loadHolidayEditor = () => {
-    if (ui.tab !== "settings" || !data.loaded) return;
+      view.holidayRev; // re-render after a rejected edit, to put the old value back
 
-    const years = holidayYears();
-    const year = years.includes(view.holidayYear) ? view.holidayYear : ui.today.slice(0, 4);
+      if (!loaded) return;
 
-    render(yearSelect, html`${years.map((y) => html`<option value="${y}">${y}</option>`)}`);
-    yearSelect.value = year;
+      render(yearSelect, html`${holidayYears().map((y) => html`<option value="${y}">${y}</option>`)}`);
+      yearSelect.value = year;
 
-    batch(() => {
-      view.holidayYear = year;
-      view.holidayText = holidaysToText(holidaysOf(year));
-      view.holidayMessage = "";
-    });
-  };
+      const list = holidaysIn(days, year);
 
-  group.add(watch(ui, "tab", loadHolidayEditor));
-  group.add(watch(data, "loaded", loadHolidayEditor));
+      render(
+        holidayList,
+        list.length
+          ? html`${list.map(
+              (d) =>
+                html`<li class="holiday-row">
+                  <input class="input holiday-row__date" type="date" value="${d.date}" data-holiday-date="${d.date}" aria-label="Date" />
+                  <input
+                    class="input holiday-row__name"
+                    type="text"
+                    value="${d.note ?? ""}"
+                    data-holiday-name="${d.date}"
+                    placeholder="Name"
+                    autocomplete="off"
+                    aria-label="Holiday name"
+                  />
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn--small"
+                    data-action="delete-holiday"
+                    data-date="${d.date}"
+                    aria-label="Delete ${d.note ?? d.date}"
+                  >
+                    ×
+                  </button>
+                </li>`,
+            )}`
+          : html`<li class="holiday-list__empty">No holidays for ${year} yet.</li>`,
+      );
+
+      const nextYear = String(Number(year) + 1);
+
+      view.copyLabel = list.length ? `Copy to ${nextYear}` : "";
+
+      const all = days.filter((d) => d.status === "holiday");
+      const next = all.filter((d) => d.date >= ui.today).sort((a, b) => a.date.localeCompare(b.date))[0];
+
+      view.holidaySummary = next ? `Next: ${next.note ?? "holiday"}, ${formatDay(next.date)}.` : "";
+    }),
+  );
 
   const onYearChange = () => {
     view.holidayYear = yearSelect.value;
-    loadHolidayEditor();
+  };
+
+  /** @param {Event} event */
+  const onHolidayChange = (event) => {
+    const el = event.target;
+
+    if (!(el instanceof HTMLInputElement)) return;
+
+    const { holidayDate, holidayName } = el.dataset;
+
+    const error = holidayDate
+      ? isDateKey(el.value)
+        ? updateHoliday(holidayDate, { date: el.value })
+        : "Pick a date."
+      : holidayName
+        ? updateHoliday(holidayName, { name: el.value })
+        : null;
+
+    if (error) {
+      toast(error);
+      view.holidayRev++;
+    } else if (holidayDate && el.value.slice(0, 4) !== view.holidayYear) {
+      view.holidayYear = el.value.slice(0, 4);
+    }
   };
 
   yearSelect.addEventListener("change", onYearChange);
-  group.add(() => yearSelect.removeEventListener("change", onYearChange));
+  holidayList.addEventListener("change", onHolidayChange);
 
-  group.add(
-    effect(() => {
-      const { holidays } = data;
-      const next = holidays.find((h) => h.date >= ui.today);
+  group.add(() => {
+    yearSelect.removeEventListener("change", onYearChange);
+    holidayList.removeEventListener("change", onHolidayChange);
+  });
 
-      /** @type {Map<string, number>} */
-      const perYear = new Map();
+  /** First date in `year` (from today, for this year) with nothing logged. */
+  const freeDateIn = (/** @type {string} */ year) => {
+    const taken = new Set(data.days.filter((d) => !isBlankDay(d)).map((d) => d.date));
+    let date = year === ui.today.slice(0, 4) ? ui.today : `${year}-01-01`;
 
-      for (const h of holidays) perYear.set(h.date.slice(0, 4), (perYear.get(h.date.slice(0, 4)) ?? 0) + 1);
+    while (date.startsWith(year) && taken.has(date)) date = addDays(date, 1);
 
-      const counts = [...perYear.entries()].map(([y, n]) => `${y}: ${n}`).join(" · ");
-
-      view.holidaySummary = holidays.length
-        ? `Saved ${counts}${next ? `. Next: ${next.name || "holiday"}, ${formatDay(next.date, { year: false })}` : ""}.`
-        : "No holidays saved.";
-    }),
-  );
+    return date.startsWith(year) ? date : null;
+  };
 
   group.add(
     effect(() => {
@@ -290,14 +349,6 @@ export function mountSettings() {
     target.removeEventListener("change", commitTarget);
     target.removeEventListener("keydown", blurOnEnter);
   });
-
-  group.add(
-    effect(() => {
-      const ids = Object.keys(data.snapshots).filter((id) => id.startsWith(`${data.settings.grouping}:`));
-
-      view.frozenInfo = ids.length ? `${plural(ids.length, "month")} frozen.` : "No months frozen yet.";
-    }),
-  );
 
   async function exportBackup() {
     const name = backupFileName(new Date());
@@ -341,12 +392,11 @@ export function mountSettings() {
       const result = importBackup(await file.text());
 
       await flush();
-      loadHolidayEditor();
 
       const parts = [
         `${result.added} new`,
         result.replaced && `${result.replaced} replaced`,
-        result.holidays && plural(result.holidays, "holiday"),
+        result.holidays && `${plural(result.holidays, "holiday")} from the old list`,
         result.skipped && `${result.skipped} rows skipped`,
       ].filter(Boolean);
 
@@ -382,18 +432,47 @@ export function mountSettings() {
     grouping: (el) => updateSettings({ grouping: /** @type {Grouping} */ (el.dataset.value) }),
     roundIn: (el) => updateSettings({ roundIn: { ...data.settings.roundIn, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
     roundOut: (el) => updateSettings({ roundOut: { ...data.settings.roundOut, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
-    "save-holidays": () => {
-      const { list, invalid } = parseHolidays(view.holidayText);
-      const year = view.holidayYear;
+    "add-holiday": () => {
+      const year = view.holidayYear || ui.today.slice(0, 4);
+      const date = freeDateIn(year);
 
-      setHolidays(replaceHolidaysForYear(data.holidays, year, list));
-      view.holidayText = holidaysToText(holidaysOf(year));
-      view.holidayMessage = invalid ? `${plural(invalid, "line")} not understood (use YYYY-MM-DD Name).` : "";
-      toast(`Saved ${plural(holidaysOf(year).length, "holiday")} for ${year}`);
+      if (!date) {
+        toast(`Every date in ${year} is taken.`);
+
+        return;
+      }
+
+      const error = addHoliday(date, "");
+
+      if (error) {
+        toast(error);
+
+        return;
+      }
+
+      // Focus the new row's name once it has rendered.
+      setTimeout(() => {
+        const input = holidayList.querySelector(`[data-holiday-name="${date}"]`);
+
+        if (input instanceof HTMLInputElement) input.focus();
+      }, 0);
     },
-    recalculate: () => {
-      if (window.confirm("Recalculate every past month with today's holidays and settings? Their numbers may change."))
-        recalculatePastMonths();
+    "delete-holiday": (el) => {
+      if (!el.dataset.date) return;
+
+      deleteDay(el.dataset.date);
+      toast("Holiday removed");
+    },
+    "copy-holidays": () => {
+      const year = view.holidayYear || ui.today.slice(0, 4);
+      const nextYear = String(Number(year) + 1);
+      const added = copyHolidaysToYear(year, nextYear);
+
+      view.holidayYear = nextYear;
+
+      toast(
+        added ? `Copied ${plural(added, "holiday")} to ${nextYear}. Adjust any dates that move.` : `${nextYear} already has these dates.`,
+      );
     },
     export: exportBackup,
     import: () => importInput.click(),
