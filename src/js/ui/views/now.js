@@ -11,7 +11,7 @@ import { isWeekday, toDateKey } from "../../domain/dates.js";
 import { resolveDay } from "../../domain/days.js";
 import { leaveRows } from "../../domain/shift.js";
 import { toMinutes } from "../../domain/time.js";
-import { formatClock, formatDay, formatHours, formatLongDate, formatTime } from "../../lib/format.js";
+import { formatClock, formatDay, formatHours, formatLongDate, formatTime, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { clockIn, clockOut, data, flush, setTodayStatus, toast, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
@@ -125,10 +125,15 @@ export function mountNow() {
       const overnight = openDay.date === toDateKey(now) ? 0 : 1440;
       const stat = model.currentStat;
 
+      // Other office days left this month, after today (left includes today).
+      const restDays = Math.max(0, model.left - 1);
+      const restHours = needed !== null && needed > 0 ? needed : settings.target;
+
       const { rows, next } = leaveRows(start, minutesOf(now) + overnight, settings, {
         stat,
         paceHours: needed,
         targetHours: settings.target,
+        restDays,
       });
 
       if (!rows.length) {
@@ -147,40 +152,50 @@ export function mountNow() {
           )
           .join(" · ");
 
-      // Colour the month average by the target, not by today's average:
-      // above target, any shorter day lowers the average, which says nothing.
+      // Compare each projected month end with the target: on pace lands on
+      // it (=), a shorter day below (▼), a longer one above (▲).
+      const EPSILON = 0.005;
+
       /** @param {number} avg */
-      const avgClass = (avg) => (avg >= settings.target - 0.005 ? "leave-table__avg--ok" : "leave-table__avg--below");
+      const versusTarget = (avg) => (avg > settings.target + EPSILON ? 1 : avg < settings.target - EPSILON ? -1 : 0);
+
+      const ARROW = { 1: "▲", 0: "=", [-1]: "▼" };
+      const CLASS = { 1: "leave-table__avg--ok", 0: "leave-table__avg--ok", [-1]: "leave-table__avg--below" };
 
       plan.markup = html`<div class="leave-plan__head">
           <span>If you leave…</span>
-          <span
-            >Month avg <strong>${currentAvg === null ? "—" : formatHours(currentAvg, 2)}</strong> · target
-            ${formatHours(settings.target)}</span
-          >
+          <span>Month avg so far <strong>${currentAvg === null ? "—" : formatHours(currentAvg, 2)}</strong></span>
         </div>
         <table class="leave-table">
           <thead>
             <tr>
               <th scope="col">Leave</th>
               <th scope="col">Today</th>
-              <th scope="col">Month avg</th>
+              <th scope="col">Month end</th>
             </tr>
           </thead>
           <tbody>
-            ${rows.map(
-              (row) =>
-                html`<tr class="${row.kinds.includes("now") ? "" : "leave-table__goal"}">
-                  <th scope="row">
-                    <strong>${row.kinds.includes("now") ? formatClock(now) : formatTime(row.at)}</strong>
-                    <span>${label(row)} · out ${formatTime(row.out)}</span>
-                  </th>
-                  <td>${formatHours(row.hours)}</td>
-                  <td class="${avgClass(row.average)}">${formatHours(row.average, 2)}</td>
-                </tr>`,
-            )}
+            ${rows.map((row) => {
+              const vs = versusTarget(row.average);
+
+              return html`<tr class="${row.kinds.includes("now") ? "" : "leave-table__goal"}">
+                <th scope="row">
+                  <strong>${row.kinds.includes("now") ? formatClock(now) : formatTime(row.at)}</strong>
+                  <span>${label(row)} · out ${formatTime(row.out)}</span>
+                </th>
+                <td>${formatHours(row.hours)}</td>
+                <td class="${CLASS[vs]}">
+                  ${formatHours(row.average, 2)}
+                  <span class="leave-table__trend" aria-label="${vs > 0 ? "above" : vs < 0 ? "below" : "on"} target">${ARROW[vs]}</span>
+                </td>
+              </tr>`;
+            })}
           </tbody>
         </table>
+        <p class="leave-plan__tip">
+          Month end vs your ${formatHours(settings.target)}
+          target${restDays > 0 ? `, assuming your other ${plural(restDays, "office day")} at ${formatHours(restHours, 1)}` : ""}.
+        </p>
         ${next && html`<p class="leave-plan__tip">Leave after ${formatTime(next.at)} and the timesheet rounds up to ${formatTime(next.out)} (${formatHours(next.hours)}).</p>`}`.value;
     }),
   );

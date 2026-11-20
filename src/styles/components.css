@@ -250,6 +250,13 @@
     color: var(--color-danger);
   }
 
+  .leave-table__trend {
+    display: inline-block;
+    width: 1.1em;
+    font-size: 0.75em;
+    text-align: center;
+  }
+
   .leave-plan__tip {
     color: var(--color-text-dim);
     font-size: var(--text-xs);

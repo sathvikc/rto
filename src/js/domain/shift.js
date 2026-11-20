@@ -155,12 +155,20 @@ export function usualTimes(days, sample = 20) {
 }
 
 /**
- * Month average if today ends with `hours` (today isn't in the stats yet
- * while you're on the clock).
+ * Where the month ends if today ends with `hours` and each of the other
+ * `restDays` remaining office days comes in at `restHours`. With no rest
+ * days this is simply the average including today. (Today isn't in the
+ * stats yet while you're on the clock.)
  * @param {Pick<MonthStat, "total" | "counted"> | null} stat
- * @param {number} hours
+ * @param {number} hours       Today.
+ * @param {number} [restDays]
+ * @param {number} [restHours]
  */
-export const projectedAverage = (stat, hours) => ((stat?.total ?? 0) + hours) / ((stat?.counted ?? 0) + 1);
+export function projectedAverage(stat, hours, restDays = 0, restHours = 0) {
+  const total = (stat?.total ?? 0) + hours + restDays * restHours;
+
+  return total / ((stat?.counted ?? 0) + 1 + restDays);
+}
 
 /**
  * @typedef {"now" | "pace" | "target"} LeaveKind
@@ -170,7 +178,7 @@ export const projectedAverage = (stat, hours) => ((stat?.total ?? 0) + hours) / 
  * @property {string} at          Leave at, "HH:MM".
  * @property {string} out         Timesheet clock-out.
  * @property {number} hours       Timesheet hours for today.
- * @property {number} average     Month average if you leave then.
+ * @property {number} average     Projected month-end average if you leave then.
  */
 
 /**
@@ -181,10 +189,14 @@ export const projectedAverage = (stat, hours) => ((stat?.total ?? 0) + hours) / 
  * @param {string} start  Clock-in, "HH:MM".
  * @param {number} nowMinutes  May exceed 1440 for a shift that crossed midnight.
  * @param {Settings} settings
- * @param {{ stat: Pick<MonthStat, "total" | "counted"> | null, paceHours: number | null, targetHours: number }} goals
+ * Each row's average is the projected month end: today at that row's
+ * hours, and the other `restDays` office days at the on-pace hours (or at
+ * the target when you're already ahead). So "on pace" lands on the target,
+ * a shorter day below it, a longer day above it.
+ * @param {{ stat: Pick<MonthStat, "total" | "counted"> | null, paceHours: number | null, targetHours: number, restDays?: number }} goals
  * @returns {{ rows: LeaveRow[], next: LeaveOption | null }}
  */
-export function leaveRows(start, nowMinutes, settings, { stat, paceHours, targetHours }) {
+export function leaveRows(start, nowMinutes, settings, { stat, paceHours, targetHours, restDays = 0 }) {
   if (!isTime(start)) return { rows: [], next: null };
 
   const now = optionAt(start, nowMinutes, settings);
@@ -203,6 +215,8 @@ export function leaveRows(start, nowMinutes, settings, { stat, paceHours, target
     if (minute !== null) picks.push({ kind, option: optionAt(start, minute, settings) });
   }
 
+  const restHours = paceHours !== null && paceHours > 0 ? paceHours : targetHours;
+
   /** @type {Map<string, LeaveRow>} */
   const byTime = new Map();
 
@@ -210,7 +224,7 @@ export function leaveRows(start, nowMinutes, settings, { stat, paceHours, target
     const existing = byTime.get(option.at);
 
     if (existing) existing.kinds.push(kind);
-    else byTime.set(option.at, { kinds: [kind], ...option, average: projectedAverage(stat, option.hours) });
+    else byTime.set(option.at, { kinds: [kind], ...option, average: projectedAverage(stat, option.hours, restDays, restHours) });
   }
 
   const nextMinute = nextRoundingStep(nowMinutes, settings);
