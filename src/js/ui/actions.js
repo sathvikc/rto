@@ -12,6 +12,7 @@ const handlers = new Map();
 export function registerActions(map) {
   for (const [name, handler] of Object.entries(map)) {
     if (handlers.has(name)) throw new Error(`Action "${name}" is already registered`);
+
     handlers.set(name, handler);
   }
 }
@@ -19,9 +20,13 @@ export function registerActions(map) {
 /** @param {MouseEvent} event */
 function onClick(event) {
   const target = event.target instanceof Element ? event.target.closest("[data-action]") : null;
+
   if (!(target instanceof HTMLElement) || target.matches(":disabled")) return;
+
   const handler = handlers.get(target.dataset.action ?? "");
+
   if (!handler) return;
+
   event.preventDefault();
   Promise.resolve(handler(target, event)).catch((error) => console.error(`Action "${target.dataset.action}" failed`, error));
 }
@@ -29,5 +34,6 @@ function onClick(event) {
 /** @returns {() => void} cleanup */
 export function listenForActions() {
   document.addEventListener("click", onClick);
+
   return () => document.removeEventListener("click", onClick);
 }

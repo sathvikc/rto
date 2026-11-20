@@ -50,6 +50,7 @@ Dependencies point inward: `ui` → `state` → `domain`/`lib`. `domain` imports
 **JavaScript**
 
 - ES modules, `const` by default, no globals, no default exports.
+- Readability: separate logical blocks with a blank line (after declarations, around multi-line blocks and `if` statements, before `return`/`throw`, before doc comments). ESLint enforces this and `npm run lint -- --fix` applies it.
 - JSDoc types on every exported function. Shared types live in `src/js/domain/types.js`. The code is type-checked with `tsc` in strict mode (`jsconfig.json`), so keep it passing without `any` or `@ts-ignore`.
 - Keep `domain/` pure and covered by tests. New calculation logic needs a test.
 - Render HTML only through the `html` tagged template in `ui/dom.js`. It escapes every interpolation. Don't assign strings to `innerHTML` yourself.

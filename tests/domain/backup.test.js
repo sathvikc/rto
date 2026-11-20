@@ -7,13 +7,16 @@ import { office } from "../helpers.js";
 describe("parseImport", () => {
   test("round-trips this app's backup", () => {
     const days = [office("2026-11-16", "08:58", "16:20")];
+
     const backup = buildBackup({
       days,
       holidays: [{ date: "2026-11-26", name: "Thanksgiving" }],
       settings: DEFAULT_SETTINGS,
       createdAt: null,
     });
+
     const parsed = parseImport(JSON.parse(JSON.stringify(backup)));
+
     assert.deepEqual(parsed.days, days);
     assert.equal(parsed.holidays.length, 1);
     assert.deepEqual(parsed.settings.roundOut, DEFAULT_SETTINGS.roundOut);
@@ -30,7 +33,9 @@ describe("parseImport", () => {
         "junk",
       ],
     });
+
     const [sheet, oldView, ptoOnly, punch] = parsed.days;
+
     assert.equal(parsed.skipped, 2);
     assert.ok(sheet.actual && !sheet.recorded);
     assert.deepEqual(oldView.actual, { start: null, end: null, hours: 4, pto: 4 });
@@ -42,6 +47,7 @@ describe("parseImport", () => {
   test("rejects documents without days and ignores invalid settings", () => {
     assert.throws(() => parseImport({ nope: true }), /No days/);
     const parsed = parseImport({ days: [], settings: { grouping: "weekly", target: 99, roundIn: { mode: "sideways" } } });
+
     assert.deepEqual(parsed.settings, {});
   });
 });
@@ -50,10 +56,12 @@ test("holiday text round-trips, sorted and de-duplicated", () => {
   const { list, invalid } = parseHolidays(
     "2026-11-27 Day after\n2026-11-26 Thanksgiving\n\nnope\n2026-02-30 Bad\n2026-11-26 Thanksgiving Day",
   );
+
   assert.deepEqual(
     list.map((h) => h.date),
     ["2026-11-26", "2026-11-27"],
   );
+
   assert.equal(list[0].name, "Thanksgiving Day");
   assert.equal(invalid, 2);
   assert.equal(holidaysToText(list), "2026-11-26 Thanksgiving Day\n2026-11-27 Day after");

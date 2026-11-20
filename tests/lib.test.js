@@ -22,5 +22,6 @@ test("monthName and plural", () => {
 test("html escapes interpolations and keeps nested templates", () => {
   const note = `<img src=x onerror="alert(1)">`;
   const out = html`<p title="${note}">${note}${html`<b>ok</b>`}${[html`<i>1</i>`, "<2>"]}${false}${null}${0}</p>`;
+
   assert.equal(out.value, `<p title="${escapeHtml(note)}">${escapeHtml(note)}<b>ok</b><i>1</i>&lt;2&gt;0</p>`);
 });

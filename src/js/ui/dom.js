@@ -10,7 +10,9 @@
 export function byId(id, type) {
   const el = document.getElementById(id);
   const ctor = type ?? HTMLElement;
+
   if (!(el instanceof ctor)) throw new Error(`#${id} is missing or not a ${ctor.name}`);
+
   return /** @type {InstanceType<C>} */ (el);
 }
 
@@ -39,6 +41,7 @@ function toMarkup(value) {
   if (value === null || value === undefined || value === false) return "";
   if (value instanceof SafeHtml) return value.value;
   if (Array.isArray(value)) return value.map(toMarkup).join("");
+
   return escapeHtml(String(value));
 }
 
@@ -51,9 +54,11 @@ function toMarkup(value) {
  */
 export function html(strings, ...values) {
   let out = strings[0];
+
   values.forEach((value, i) => {
     out += toMarkup(value) + strings[i + 1];
   });
+
   return new SafeHtml(out);
 }
 

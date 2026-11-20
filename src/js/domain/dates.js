@@ -14,6 +14,7 @@ export const toDateKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${
 /** @param {string} key */
 export function parseDateKey(key) {
   const [y, m, d] = key.split("-").map(Number);
+
   return new Date(y, m - 1, d);
 }
 
@@ -32,7 +33,9 @@ export function isDateKey(value) {
  */
 export function addDays(key, days) {
   const d = parseDateKey(key);
+
   d.setDate(d.getDate() + days);
+
   return toDateKey(d);
 }
 
@@ -42,6 +45,7 @@ export const weekday = (key) => parseDateKey(key).getDay();
 /** @param {string} key */
 export function isWeekday(key) {
   const w = weekday(key);
+
   return w >= 1 && w <= 5;
 }
 
@@ -51,6 +55,7 @@ export const startOfWeekSunday = (key) => addDays(key, -weekday(key));
 /** @param {string} key */
 export function startOfWeekMonday(key) {
   const w = weekday(key);
+
   return addDays(key, w === 0 ? -6 : 1 - w);
 }
 

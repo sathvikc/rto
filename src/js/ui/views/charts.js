@@ -26,14 +26,18 @@ const GROUP_OPTIONS = /** @type {const} */ ([
 function byYear(stats) {
   /** @type {Map<string, MonthStat[]>} */
   const years = new Map();
+
   for (const s of stats) {
     const y = s.key.slice(0, 4);
+
     years.set(y, [...(years.get(y) ?? []), s]);
   }
+
   return [...years.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([year, list]) => {
       const c = combineStats(list);
+
       return { label: year, avg: c.avg, pct: c.presencePct, partial: c.partial };
     });
 }
@@ -57,15 +61,19 @@ export function mountCharts() {
     effect(() => {
       const { stats, selKey, currentKey } = model;
       const mode = ui.chartGroup;
+
       render(toggle, html`${segmentButtons(GROUP_OPTIONS, mode, "chart-group")}`);
 
       const year = (selKey || currentKey).slice(0, 4);
       const points = mode === "year" ? byYear(stats) : byMonth(stats, year);
       const scope = mode === "year" ? "by year" : `by month · ${year}`;
+
       if (!points.length) {
         render(root, html`<div class="card empty">Charts appear once you log a few days.</div>`);
+
         return;
       }
+
       render(
         root,
         html`<figure class="card chart-card">
@@ -92,5 +100,6 @@ export function mountCharts() {
       ui.chartGroup = /** @type {ChartGroup} */ (el.dataset.value);
     },
   });
+
   return () => group.dispose();
 }

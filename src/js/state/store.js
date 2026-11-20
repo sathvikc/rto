@@ -44,6 +44,7 @@ const initialData = {
   storage: "",
   persist: "",
 };
+
 export const data = state(initialData);
 
 /**
@@ -61,6 +62,7 @@ export const data = state(initialData);
  */
 
 const now = new Date();
+
 /** @type {UiState} */
 const initialUi = {
   nowMs: now.getTime(),
@@ -71,26 +73,32 @@ const initialUi = {
   yearSel: null,
   toast: "",
 };
+
 export const ui = state(initialUi);
 
 // ---------------------------------------------------------------- persistence
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let saveTimer;
+
 /** @type {object | null} */
 let pendingDoc = null;
 
 /** Write any pending change now (call before the app is backgrounded). */
 export async function flush() {
   clearTimeout(saveTimer);
+
   if (!pendingDoc) return;
+
   const doc = pendingDoc;
+
   pendingDoc = null;
   data.storage = await saveDocument(doc);
 }
 
 effect(() => {
   if (!data.loaded) return;
+
   pendingDoc = {
     app: "rto",
     days: data.days,
@@ -99,6 +107,7 @@ effect(() => {
     lastExportAt: data.lastExportAt,
     createdAt: data.createdAt,
   };
+
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, SAVE_DEBOUNCE_MS);
 });
@@ -108,14 +117,18 @@ const newestFirst = (days) => [...days].sort((a, b) => b.date.localeCompare(a.da
 
 export async function loadState() {
   const doc = await loadDocument();
+
   /** @type {import("../domain/backup.js").ParsedImport | null} */
   let parsed = null;
+
   try {
     parsed = doc ? parseImport(doc) : null;
   } catch {
     // Unreadable document: start empty rather than crash.
   }
+
   const meta = /** @type {{ lastExportAt?: unknown, createdAt?: unknown } | null} */ (doc);
+
   data.days = newestFirst(parsed?.days ?? []);
   data.holidays = parsed?.holidays ?? [];
   data.settings = { ...DEFAULT_SETTINGS, ...(parsed?.settings ?? {}) };
@@ -134,6 +147,7 @@ let toastTimer;
 export function toast(message) {
   ui.toast = message;
   clearTimeout(toastTimer);
+
   toastTimer = setTimeout(() => {
     ui.toast = "";
   }, TOAST_MS);
@@ -162,7 +176,9 @@ export function saveDay(day, replaceDate = null) {
     note: day.note?.trim() || null,
     updatedAt: new Date().toISOString(),
   };
+
   const rest = data.days.filter((d) => d.date !== clean.date && d.date !== replaceDate);
+
   data.days = newestFirst([...rest, clean]);
 }
 
@@ -174,20 +190,27 @@ export function deleteDay(date) {
 /** Clock in, or clock out of the open day. */
 export async function punch() {
   const open = findOpenDay();
+
   if (open?.recorded) {
     let end = timeOf(new Date());
+
     // A same-minute tap would be a zero-length shift.
     if (end === open.recorded.start) end = fromMinutes(toMinutes(end) + 1);
+
     saveDay({ ...open, recorded: { ...open.recorded, end } });
     toast(`Clocked out at ${formatTime(end)}`);
   } else {
     const today = toDateKey(new Date());
     const existing = findDay(today);
+
     if (existing?.recorded?.start) {
       toast("Today already has a clock-in. Edit the day instead.");
+
       return;
     }
+
     const start = timeOf(new Date());
+
     saveDay({
       date: today,
       status: "office",
@@ -195,8 +218,10 @@ export async function punch() {
       actual: existing?.actual ?? null,
       note: existing?.note ?? null,
     });
+
     toast(`Clocked in at ${formatTime(start)}`);
   }
+
   await flush();
 }
 
@@ -206,11 +231,14 @@ export async function punch() {
  */
 export function setTodayStatus(status) {
   const existing = findDay(ui.today);
+
   if (status === "office") {
     if (existing && !existing.recorded && !existing.actual) deleteDay(ui.today);
     else if (existing) saveDay({ ...existing, status });
+
     return;
   }
+
   saveDay({ ...(existing ?? { date: ui.today, recorded: null, actual: null, note: null }), status });
   toast(`Today marked ${STATUS_LABEL[status]}`);
 }
@@ -224,7 +252,9 @@ export function setTodayStatus(status) {
  */
 export function predictedTimesheet(recorded) {
   const p = predictEntry(recorded, data.settings);
+
   if (!p) return { ...EMPTY_ENTRY };
+
   return { ...p, hours: p.hours === null ? null : round2(p.hours) };
 }
 
@@ -235,6 +265,7 @@ export function predictedTimesheet(recorded) {
 export function verifyAsPredicted(dates) {
   const set = new Set(dates);
   const at = new Date().toISOString();
+
   data.days = data.days.map((d) => (set.has(d.date) && !d.actual ? { ...d, actual: predictedTimesheet(d.recorded), updatedAt: at } : d));
   toast(dates.length === 1 ? "Marked as matching the timesheet" : `${dates.length} days marked as matching`);
 }
@@ -268,25 +299,32 @@ export function markExported() {
 export function importBackup(json) {
   /** @type {unknown} */
   let parsed;
+
   try {
     parsed = JSON.parse(json);
   } catch {
     throw new Error("That file is not valid JSON.");
   }
+
   const imp = parseImport(parsed);
+
   if (!imp.days.length && !imp.holidays.length) throw new Error("No days found in that file.");
 
   const at = new Date().toISOString();
   const days = new Map(data.days.map((d) => [d.date, d]));
+
   for (const d of imp.days) days.set(d.date, { ...d, updatedAt: at });
   data.days = newestFirst([...days.values()]);
 
   if (imp.holidays.length) {
     const holidays = new Map(data.holidays.map((h) => [h.date, h]));
+
     for (const h of imp.holidays) holidays.set(h.date, h);
     data.holidays = [...holidays.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
+
   updateSettings(imp.settings);
+
   return { days: imp.days.length, holidays: imp.holidays.length, skipped: imp.skipped };
 }
 

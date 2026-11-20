@@ -12,12 +12,14 @@ export const isTime = (value) => typeof value === "string" && TIME_RE.test(value
 /** @param {string} time "HH:MM" */
 export function toMinutes(time) {
   const [h, m] = time.split(":").map(Number);
+
   return h * 60 + m;
 }
 
 /** @param {number} minutes  Wraps around midnight. */
 export function fromMinutes(minutes) {
   const m = ((minutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+
   return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
 }
 
@@ -33,10 +35,13 @@ export const timeOf = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
  */
 export function spanHours(start, end) {
   if (!isTime(start) || !isTime(end)) return null;
+
   const s = toMinutes(start);
   let e = toMinutes(end);
+
   if (e === s) return null;
   if (e < s) e += MINUTES_PER_DAY;
+
   return (e - s) / 60;
 }
 

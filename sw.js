@@ -77,7 +77,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+
   event.respondWith(staleWhileRevalidate(event, request));
 });
 
@@ -90,16 +92,20 @@ async function staleWhileRevalidate(event, request) {
   // Every navigation is the single-page app shell.
   const key = request.mode === "navigate" ? "index.html" : request;
   const cached = await cache.match(key, { ignoreSearch: request.mode === "navigate" });
+
   const network = fetch(request)
     .then((response) => {
       if (response.ok && response.type === "basic") cache.put(key, response.clone());
+
       return response;
     })
     .catch(() => null);
 
   if (cached) {
     event.waitUntil(network);
+
     return cached;
   }
+
   return (await network) ?? new Response("Offline", { status: 503, statusText: "Offline" });
 }

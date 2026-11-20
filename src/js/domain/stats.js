@@ -28,9 +28,11 @@ export function monthlyStats(days, holidays, settings, today) {
 
   /** @type {Map<string, Day[]>} */
   const groups = new Map();
+
   for (const day of days) {
     const key = groupKey(day.date, settings.grouping);
     const list = groups.get(key);
+
     if (list) list.push(day);
     else groups.set(key, [day]);
   }
@@ -46,12 +48,15 @@ export function monthlyStats(days, holidays, settings, today) {
 
       for (const { day, r } of resolved.values()) {
         const inAverage = countsInAverage(day, r);
+
         if (inAverage && r.total !== null) {
           total += r.total;
           counted++;
         }
+
         if (!r.verified && !r.open && day.date <= today && (inAverage || day.status !== "office" || r.pto !== null)) {
           unverified++;
+
           if (inAverage) unverifiedAvg++;
         }
       }
@@ -60,16 +65,23 @@ export function monthlyStats(days, holidays, settings, today) {
       let present = 0;
       let wfh = 0;
       const weeks = new Set(rows.filter((d) => d.date <= today).map((d) => startOfWeekSunday(d.date)));
+
       for (const sunday of weeks) {
         for (let i = 1; i <= 5; i++) {
           const date = addDays(sunday, i);
+
           if (date > today || groupKey(date, settings.grouping) !== key) continue;
+
           const rec = resolved.get(date);
           const workedOnHoliday = rec && rec.day.status === "office" && rec.r.work !== null;
+
           if (holidaySet.has(date) && !workedOnHoliday) continue;
+
           denom++;
+
           if (rec) {
             present += presenceOf(rec.day, rec.r);
+
             if (rec.day.status === "wfh") wfh++;
           }
         }
@@ -109,13 +121,18 @@ export function workdaysLeft(monthKey, days, holidays, settings, today) {
   const first = `${monthKey}-01`;
   const last = addDays(first, GROUP_SCAN_DAYS);
   let count = 0;
+
   for (let date = today > first ? today : first; date <= last; date = addDays(date, 1)) {
     if (groupKey(date, settings.grouping) !== monthKey || !isWeekday(date) || holidaySet.has(date)) continue;
+
     const day = byDate.get(date);
+
     if (day && day.status !== "office") continue;
     if (date === today && day && !isOpen(day) && (day.recorded || day.actual)) continue;
+
     count++;
   }
+
   return count;
 }
 
@@ -128,8 +145,10 @@ export function workdaysLeft(monthKey, days, holidays, settings, today) {
  */
 export function neededAverage(stat, left, target) {
   if (left <= 0) return null;
+
   const total = stat?.total ?? 0;
   const counted = stat?.counted ?? 0;
+
   return Math.max(0, (target * (counted + left) - total) / left);
 }
 
@@ -148,6 +167,7 @@ export function combineStats(stats) {
     }),
     { total: 0, counted: 0, present: 0, denom: 0, partial: false },
   );
+
   return {
     ...sum,
     avg: sum.counted ? sum.total / sum.counted : null,

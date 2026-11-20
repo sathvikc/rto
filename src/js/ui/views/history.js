@@ -35,6 +35,7 @@ function dayCard(day, settings, today, holiday) {
   const unverified = !r.verified && !r.open && isPast;
 
   const shown = r.verified && act && (act.start || act.end) ? act : rec;
+
   const timeLine =
     shown && (shown.start || shown.end)
       ? `${formatTime(shown.start)} → ${r.open ? "…" : formatTime(shown.end)}`
@@ -46,23 +47,28 @@ function dayCard(day, settings, today, holiday) {
 
   /** @type {Array<SafeHtml | string>} */
   const details = [];
+
   if (r.verified && act) {
     const punchedDiffers = rec && isTime(rec.start) && isTime(rec.end) && (rec.start !== act.start || rec.end !== act.end);
+
     details.push(
       html`<span class="text-ok">✓ Timesheet</span
         >${punchedDiffers && rec && ` · you punched ${formatTime(rec.start)} → ${formatTime(rec.end)}`}`,
     );
   } else if (rec && isTime(rec.start) && isTime(rec.end)) {
     const p = predictEntry(rec, settings);
+
     details.push(`Predicted ${formatTime(p?.start)} → ${formatTime(p?.end)} · ${formatHours(p?.hours)} · not verified`);
   } else if (r.open) {
     details.push("Hours are calculated at clock-out");
   } else if (isPast) {
     details.push("Not verified");
   }
+
   if (r.pto !== null) details.push(`PTO ${formatHours(r.pto)}${r.work !== null ? ` · worked ${formatHours(r.work)}` : ""}`);
 
   const star = unverified ? html`<sup class="star" title="Not verified">*</sup>` : "";
+
   return html` <div class="cluster cluster--between cluster--top">
       <h3 class="day-card__date">${formatDay(day.date)}</h3>
       <div class="day-card__badges">
@@ -95,6 +101,7 @@ export function mountHistory() {
   const yearFilter = byId("year-filter");
   const yearSelect = byId("year-select", HTMLSelectElement);
   const empty = byId("history-empty");
+
   /** @type {{ items: Array<{ key: string, html: SafeHtml }> }} */
   const initialList = { items: [] };
   const list = state(initialList);
@@ -104,24 +111,30 @@ export function mountHistory() {
       const { days, settings } = data;
       const { filter, yearSel, today } = ui;
       const { selKey, holidayByDate } = model;
+
       render(filterEl, html`${segmentButtons(FILTER_OPTIONS, filter, "history-filter")}`);
 
       const years = [...new Set(days.map((d) => d.date.slice(0, 4)))].sort().reverse();
       const fallbackYear = (selKey || today).slice(0, 4);
+
       const year =
         yearSel === "all" || (yearSel && years.includes(yearSel)) ? yearSel : years.includes(fallbackYear) ? fallbackYear : "all";
+
       render(
         yearSelect,
         html`<option value="all">All years</option>
           ${years.map((y) => html`<option value="${y}">${y}</option>`)}`,
       );
+
       yearSelect.value = year;
       yearFilter.hidden = filter !== "all";
 
       let rows = days;
+
       if (filter === "week") {
         const start = startOfWeekMonday(today);
         const end = addDays(start, 6);
+
         rows = days.filter((d) => d.date >= start && d.date <= end);
         caption.textContent = `${formatDay(start, { year: false })} – ${formatDay(end, { year: false })}`;
       } else if (filter === "month") {
@@ -129,6 +142,7 @@ export function mountHistory() {
         caption.textContent = selKey ? monthName(selKey) : "";
       } else {
         if (year !== "all") rows = days.filter((d) => d.date.startsWith(year));
+
         caption.textContent = plural(rows.length, "day");
       }
 
@@ -152,6 +166,7 @@ export function mountHistory() {
   const onYearChange = () => {
     ui.yearSel = yearSelect.value;
   };
+
   yearSelect.addEventListener("change", onYearChange);
   group.add(() => yearSelect.removeEventListener("change", onYearChange));
 

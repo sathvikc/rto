@@ -51,11 +51,13 @@ const initialModel = {
   todayHoliday: null,
   holidayByDate: new Map(),
 };
+
 export const model = state(initialModel);
 
 effect(() => {
   const { days, holidays, settings, loaded } = data;
   const { today, monthSel } = ui;
+
   if (!loaded) return;
 
   const stats = monthlyStats(days, holidays, settings, today);

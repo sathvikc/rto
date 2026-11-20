@@ -23,19 +23,23 @@ const TICK_MS = 1000;
 function tick() {
   const now = new Date();
   const today = toDateKey(now);
+
   batch(() => {
     ui.nowMs = now.getTime();
+
     if (ui.today !== today) ui.today = today;
   });
 }
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+
   navigator.serviceWorker.register("sw.js").catch((error) => console.warn("Service worker registration failed", error));
 }
 
 async function start() {
   const app = createCleanupGroup();
+
   app.add(setUpTheme());
   app.add(setUpDialogs());
   app.add(listenForActions());
@@ -52,13 +56,16 @@ async function start() {
   await loadState();
   tick();
   const timer = setInterval(tick, TICK_MS);
+
   app.add(() => clearInterval(timer));
 
   // iOS can suspend a backgrounded app at any time: save on the way out.
   const onVisibility = () => (document.visibilityState === "hidden" ? flush() : tick());
   const onPageHide = () => void flush();
+
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", onPageHide);
+
   app.add(() => {
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pagehide", onPageHide);

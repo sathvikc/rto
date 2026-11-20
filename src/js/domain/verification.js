@@ -14,6 +14,7 @@ const FRIDAY = 5;
  */
 export function timesheetCoverage(today, releaseDay) {
   const release = addDays(today, -((weekday(today) - releaseDay + 7) % 7));
+
   return addDays(release, -((weekday(release) - FRIDAY + 7) % 7 || 7));
 }
 
@@ -49,13 +50,17 @@ export function fitGrace(pairs) {
   let hi = STEP_MINUTES - 1;
   let used = 0;
   let odd = 0;
+
   for (const [raw, actual] of pairs) {
     const minutes = toMinutes(raw);
     const past = minutes % STEP_MINUTES;
+
     if (past === 0) continue;
+
     const down = minutes - past;
     const up = (down + STEP_MINUTES) % 1440;
     const got = toMinutes(actual);
+
     if (got === down) {
       lo = Math.max(lo, past);
       used++;
@@ -66,6 +71,7 @@ export function fitGrace(pairs) {
       odd++;
     }
   }
+
   return used ? { lo, hi, ok: lo <= hi, used, odd } : null;
 }
 
@@ -79,26 +85,34 @@ export function fitGrace(pairs) {
 export function roundingCheck(days, settings) {
   /** @type {RoundingReport} */
   const report = { in: { match: 0, total: 0 }, out: { match: 0, total: 0 }, mismatches: [], fit: { in: null, out: null } };
+
   /** @type {Array<[string, string]>} */
   const ins = [];
+
   /** @type {Array<[string, string]>} */
   const outs = [];
 
   for (const day of days) {
     const { recorded: rec, actual: act } = day;
+
     if (!rec || !act || !isTime(rec.start) || !isTime(rec.end) || !isTime(act.start) || !isTime(act.end)) continue;
+
     const predicted = /** @type {Entry} */ (predictEntry(rec, settings));
     const inOk = predicted.start === act.start;
     const outOk = predicted.end === act.end;
+
     report.in.total++;
     report.out.total++;
+
     if (inOk) report.in.match++;
     if (outOk) report.out.match++;
     if (!inOk || !outOk) report.mismatches.push({ date: day.date, recorded: rec, predicted, actual: act });
+
     ins.push([rec.start, act.start]);
     outs.push([rec.end, act.end]);
   }
 
   report.fit = { in: fitGrace(ins), out: fitGrace(outs) };
+
   return report;
 }

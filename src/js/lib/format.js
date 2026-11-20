@@ -10,7 +10,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
  */
 export function formatTime(time) {
   if (!time) return "—";
+
   const [h, m] = time.split(":").map(Number);
+
   return `${h % 12 === 0 ? 12 : h % 12}:${pad2(m)} ${h >= 12 ? "PM" : "AM"}`;
 }
 
@@ -23,7 +25,9 @@ export function formatTime(time) {
 export function formatHours(hours, digits) {
   if (hours === null || hours === undefined || Number.isNaN(hours)) return "—";
   if (digits !== undefined) return `${hours.toFixed(digits)}h`;
+
   const r = Math.round(hours * 100) / 100;
+
   return `${Number.isInteger(r * 4) ? String(r) : r.toFixed(1)}h`;
 }
 
@@ -53,6 +57,7 @@ export const formatLongDate = (d) => d.toLocaleDateString(LOCALE, { weekday: "lo
 /** @param {Date} d  "10:05 AM" */
 export function formatClock(d) {
   const h = d.getHours();
+
   return `${h % 12 === 0 ? 12 : h % 12}:${pad2(d.getMinutes())} ${h >= 12 ? "PM" : "AM"}`;
 }
 

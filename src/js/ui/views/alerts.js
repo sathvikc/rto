@@ -8,6 +8,7 @@ import { byId, html, render } from "../dom.js";
 
 export function mountAlerts() {
   const root = byId("alerts");
+
   return effect(() => {
     const { toVerify, coverage, laterUnverified } = model;
     const { lastExportAt, days } = data;

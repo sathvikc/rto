@@ -16,11 +16,13 @@ const ALWAYS = ["./", "index.html", "manifest.webmanifest"];
 async function walk(dir) {
   const entries = await readdir(join(root, dir), { withFileTypes: true });
   const nested = await Promise.all(entries.map((e) => (e.isDirectory() ? walk(join(dir, e.name)) : Promise.resolve([join(dir, e.name)]))));
+
   return nested.flat();
 }
 
 const sw = await readFile(join(root, "sw.js"), "utf8");
 const listed = new Set([...sw.matchAll(/^\s+"([^"]+)",$/gm)].map((m) => m[1]));
+
 const shipped = (await Promise.all(SHIPPED_DIRS.map(walk)))
   .flat()
   .filter((f) => SHIPPED_EXT.test(f))
@@ -32,6 +34,8 @@ const stale = [...listed].filter((f) => !ALWAYS.includes(f) && !f.startsWith("as
 if (missing.length || stale.length) {
   if (missing.length) console.error(`Missing from APP_SHELL in sw.js:\n  ${missing.join("\n  ")}`);
   if (stale.length) console.error(`Listed in APP_SHELL but not found:\n  ${stale.join("\n  ")}`);
+
   process.exit(1);
 }
+
 console.log(`APP_SHELL OK (${listed.size} entries)`);

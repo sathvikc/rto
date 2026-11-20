@@ -16,6 +16,7 @@ describe("spanHours", () => {
 describe("resolveDay", () => {
   test("unverified days use the predicted rounding", () => {
     const r = resolveDay(office("2026-11-16", "08:58", "16:20"), DEFAULT_SETTINGS);
+
     assert.equal(r.verified, false);
     assert.equal(r.work, 7.75);
   });
@@ -23,12 +24,14 @@ describe("resolveDay", () => {
   test("verified days use the timesheet", () => {
     const day = { ...office("2026-11-16", "08:58", "16:20"), actual: { start: "08:45", end: "16:15", hours: null, pto: null } };
     const r = resolveDay(day, DEFAULT_SETTINGS);
+
     assert.equal(r.verified, true);
     assert.equal(r.work, 7.5);
   });
 
   test("an open punch has no work hours yet", () => {
     const day = office("2026-11-20", "09:00", null);
+
     assert.equal(isOpen(day), true);
     assert.equal(resolveDay(day, DEFAULT_SETTINGS).work, null);
   });
@@ -38,6 +41,7 @@ describe("presenceOf", () => {
   test("WFH 0, OOO and Sick 1, blank office 0", () => {
     /** @param {import("../../src/js/domain/types.js").Day} d */
     const p = (d) => presenceOf(d, resolveDay(d, DEFAULT_SETTINGS));
+
     assert.equal(p(plain("2026-11-03", "wfh")), 0);
     assert.equal(p(plain("2026-11-04", "ooo")), 1);
     assert.equal(p(plain("2026-11-05", "sick")), 1);

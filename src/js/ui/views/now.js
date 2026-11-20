@@ -19,6 +19,7 @@ const QUICK_STATUSES = /** @type {const} */ (["wfh", "ooo", "sick"]);
 
 export function mountNow() {
   const group = createCleanupGroup();
+
   const view = state({
     dateLine: "",
     clockText: "",
@@ -36,14 +37,18 @@ export function mountNow() {
     effect(() => {
       const now = new Date(ui.nowMs);
       const open = model.openDay;
+
       view.dateLine = formatLongDate(now);
       const [clock, period] = formatClock(now).split(" ");
+
       view.clockText = `${clock} ${period}`;
       view.secondsText = String(now.getSeconds()).padStart(2, "0");
+
       if (open?.recorded?.start) {
         const minutesNow = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
         const overnight = open.date === toDateKey(now) ? 0 : 1440;
         const elapsed = Math.max(0, (minutesNow + overnight - toMinutes(open.recorded.start)) / 60);
+
         view.statusLine = "On the clock";
         view.detailLine = `Started ${formatTime(open.recorded.start)} · ${formatHours(elapsed, 1)} elapsed`;
       }
@@ -55,16 +60,20 @@ export function mountNow() {
     effect(() => {
       const { openDay, todayDay, todayHoliday } = model;
       const { settings, loaded } = data;
+
       view.isOpen = openDay !== null;
       view.punchLabel = openDay ? "Clock out" : "Clock in";
       view.punchDisabled = !loaded;
       view.roundingNote = `Timesheet prediction: clock-in ${describeRule(settings.roundIn)}; clock-out ${describeRule(settings.roundOut)}.`;
+
       if (openDay) return; // The ticking effect owns the status lines.
+
       if (todayDay && todayDay.status !== "office") {
         view.statusLine = `Today: ${STATUS_LABEL[todayDay.status]}`;
         view.detailLine = "Not an office day.";
       } else if (todayDay?.recorded?.end) {
         const r = resolveDay(todayDay, settings);
+
         view.statusLine = "Done for today";
         view.detailLine = `${formatTime(todayDay.recorded.start)} → ${formatTime(todayDay.recorded.end)} · ${formatHours(r.work)}${r.verified ? "" : " *"}`;
       } else {
@@ -76,9 +85,11 @@ export function mountNow() {
 
   // Quick day type for today.
   const quick = byId("today-status");
+
   group.add(
     effect(() => {
       const { openDay, todayDay } = model;
+
       if (openDay) {
         render(quick, html``);
       } else if (todayDay && todayDay.status !== "office") {
@@ -107,5 +118,6 @@ export function mountNow() {
   });
 
   group.add(bindDom(byId("now"), view, { handlers: [classToggle("punch--out")] }));
+
   return () => group.dispose();
 }

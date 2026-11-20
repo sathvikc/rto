@@ -5,6 +5,7 @@ import { describeRule, graceOf, roundTime } from "../../src/js/domain/rounding.j
 describe("roundTime", () => {
   test("custom grace 4: 4:16-4:19 round down, 4:20+ round up", () => {
     const rule = /** @type {const} */ ({ mode: "custom", grace: 4 });
+
     assert.equal(roundTime("16:15", rule), "16:15");
     assert.equal(roundTime("16:16", rule), "16:15");
     assert.equal(roundTime("16:19", rule), "16:15");

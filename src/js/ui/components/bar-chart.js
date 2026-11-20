@@ -31,6 +31,7 @@ export function barChart(bars, { max, color, label }) {
   const slot = plotW / bars.length;
   const barW = Math.max(4, Math.min(34, slot * 0.64));
   const fs = fontSize(bars.length);
+
   /** @param {number} f */
   const yAt = (f) => PAD.top + plotH * (1 - f);
 
@@ -41,6 +42,7 @@ export function barChart(bars, { max, color, label }) {
       const cx = PAD.left + slot * i + slot / 2;
       const h = bar.value === null ? 0 : Math.max(1.5, (bar.value / peak) * plotH);
       const y = yAt(0) - h;
+
       return html`<g>
         <title>${bar.label}: ${bar.text || "no data"}</title>
         <rect x="${cx - barW / 2}" y="${y}" width="${barW}" height="${h}" rx="3" fill="${color}" opacity="${bar.faded ? 0.5 : 1}" />

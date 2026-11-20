@@ -19,6 +19,7 @@ export function mountSummary() {
   group.add(
     effect(() => {
       const { monthKeys, selKey } = model;
+
       render(monthSelect, html`${monthKeys.map((k) => html`<option value="${k}">${monthName(k)}</option>`)}`);
       monthSelect.value = selKey;
     }),
@@ -28,7 +29,9 @@ export function mountSummary() {
     effect(() => {
       const { selStat: st, selKey, currentKey } = model;
       const { grouping } = data.settings;
+
       if (!selKey) return;
+
       render(
         summary,
         html`<p class="text-dim">
@@ -66,6 +69,7 @@ export function mountSummary() {
     effect(() => {
       const { needed: avgNeeded, left, autoLeft, selKey, currentKey, selStat: st } = model;
       const { target: goal, workdaysOverride } = data.settings;
+
       if (!selKey) return;
 
       if (selKey < currentKey) {
@@ -75,16 +79,19 @@ export function mountSummary() {
             : st.avg >= goal
               ? `At or above the ${goal}h target.`
               : `${formatHours(goal - st.avg, 1)} under the ${goal}h target.`;
+
         render(
           needed,
           html`<p class="text-dim">${monthName(selKey)} is closed</p>
             <p class="figure">${st?.avg == null ? "—" : formatHours(st.avg, 1)}</p>
             <p class="text-dim text-small">${verdict}</p>`,
         );
+
         return;
       }
 
       const overridden = workdaysOverride?.key === selKey;
+
       render(
         needed,
         html`<div class="cluster cluster--between cluster--top">
@@ -127,18 +134,23 @@ export function mountSummary() {
       ui.monthSel = monthSelect.value;
       ui.yearSel = null;
     });
+
   const commitTarget = () => {
     const value = Number(target.value.trim());
+
     if (Number.isFinite(value) && value > 0 && value <= 24) updateSettings({ target: value });
     else target.value = String(data.settings.target);
   };
+
   /** @param {KeyboardEvent} e */
   const blurOnEnter = (e) => {
     if (e.key === "Enter") target.blur();
   };
+
   monthSelect.addEventListener("change", onMonthChange);
   target.addEventListener("change", commitTarget);
   target.addEventListener("keydown", blurOnEnter);
+
   group.add(() => {
     monthSelect.removeEventListener("change", onMonthChange);
     target.removeEventListener("change", commitTarget);
@@ -148,6 +160,7 @@ export function mountSummary() {
   /** @param {number} value */
   const setWorkdays = (value) =>
     updateSettings({ workdaysOverride: { key: model.selKey, value: Math.max(0, Math.min(MAX_WORKDAYS, value)) } });
+
   registerActions({
     "workdays-dec": () => setWorkdays(model.left - 1),
     "workdays-inc": () => setWorkdays(model.left + 1),

@@ -32,6 +32,7 @@ describe("fitGrace", () => {
       ["16:20", "16:15"],
       ["16:22", "16:20"],
     ]);
+
     assert.equal(fit?.ok, false);
     assert.equal(fit?.odd, 1);
   });
@@ -45,5 +46,6 @@ test("roundingCheck compares predictions with verified days", () => {
   /** @param {string} date @param {string} raw @param {string} sheet */
   const day = (date, raw, sheet) => ({ ...office(date, "09:00", raw), actual: { start: "09:00", end: sheet, hours: null, pto: null } });
   const report = roundingCheck([day("2026-11-02", "16:17", "16:15"), day("2026-11-03", "16:19", "16:30")], DEFAULT_SETTINGS);
+
   assert.deepEqual([report.out.match, report.out.total, report.mismatches.length], [1, 2, 1]);
 });

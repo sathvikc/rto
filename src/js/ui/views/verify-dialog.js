@@ -20,12 +20,16 @@ import { byId, html, render } from "../dom.js";
 function summary(day, settings) {
   const r = resolveDay(day, settings);
   const rec = day.recorded;
+
   if (day.status !== "office") return html`${STATUS_LABEL[day.status]}${r.pto !== null && ` · PTO ${formatHours(r.pto)}`}`;
+
   if (rec && isTime(rec.start) && isTime(rec.end)) {
     const p = predictEntry(rec, settings);
+
     return html`${formatTime(p?.start)} → ${formatTime(p?.end)} · <strong>${formatHours(p?.hours)}</strong><br />
       <span class="text-dim text-small">you: ${formatTime(rec.start)} → ${formatTime(rec.end)}</span>`;
   }
+
   return html`${r.total === null ? "No hours" : formatHours(r.total)}`;
 }
 
@@ -38,16 +42,21 @@ export function mountVerifyDialog() {
     effect(() => {
       const { toVerify, coverage, laterUnverified } = model;
       const { settings } = data;
+
       if (!coverage) return;
+
       const through = formatDay(coverage, { year: false });
+
       const later =
         laterUnverified > 0 &&
         ` ${plural(laterUnverified, "newer day")} ${laterUnverified === 1 ? "is" : "are"} waiting for the next timesheet.`;
 
       if (!toVerify.length) {
         render(body, html`<p class="text-dim">Nothing to check. Days through ${through} are verified.${later}</p>`);
+
         return;
       }
+
       render(
         body,
         html`<p class="field__hint">
@@ -85,5 +94,6 @@ export function mountVerifyDialog() {
       closeDialogs();
     },
   });
+
   return () => group.dispose();
 }

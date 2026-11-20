@@ -34,9 +34,13 @@ class FormError extends Error {}
  */
 function hoursField(value, label) {
   const text = value.trim();
+
   if (!text) return null;
+
   const n = Number(text);
+
   if (!Number.isFinite(n) || n < 0 || n > 24) throw new FormError(`${label} must be a number from 0 to 24.`);
+
   return n;
 }
 
@@ -81,8 +85,10 @@ export function mountDayDialog() {
     effect(() => {
       const { status, rStart, rEnd, rHours, rPto } = form;
       const { settings } = data;
+
       render(statusEl, html`${segmentButtons(STATUS_OPTIONS, status, "day-status")}`);
       const office = status === "office";
+
       form.statusHint = STATUS_HINT[status];
       form.showTimes = office;
       form.showPto = status !== "wfh";
@@ -91,6 +97,7 @@ export function mountDayDialog() {
 
       if (office && rStart && rEnd) {
         const p = predictEntry({ start: rStart, end: rEnd, hours: null, pto: null }, settings);
+
         form.preview =
           p?.hours == null
             ? "Clock out must differ from clock in."
@@ -108,6 +115,7 @@ export function mountDayDialog() {
     const day = date ? findDay(date) : null;
     const r = day?.recorded;
     const a = day?.actual;
+
     Object.assign(form, {
       title: day ? `Edit ${formatDay(day.date, { year: false })}` : "Manual entry",
       saveLabel: day ? "Save changes" : "Save day",
@@ -126,6 +134,7 @@ export function mountDayDialog() {
       note: day?.note ?? "",
       error: "",
     });
+
     openDialog(dialog);
   }
 
@@ -136,6 +145,7 @@ export function mountDayDialog() {
       hours: hoursField(form.rHours, "Hours"),
       pto: hoursField(form.rPto, "PTO hours"),
     });
+
     Object.assign(form, { aStart: p.start ?? "", aEnd: p.end ?? "", aHours: numText(p.hours), aPto: numText(p.pto) });
   }
 
@@ -150,10 +160,13 @@ export function mountDayDialog() {
 
     /** @type {Entry | null} */
     let recorded = null;
+
     if (office) {
       if (f.rEnd && !f.rStart) throw new FormError("Add a clock-in time, or clear clock-out.");
       if (f.rStart && f.rStart === f.rEnd) throw new FormError("Clock out must differ from clock in.");
+
       const hasTimes = Boolean(f.rStart || f.rEnd);
+
       if (hasTimes || rHours !== null || rPto !== null) {
         recorded = { start: f.rStart || null, end: f.rEnd || null, hours: hasTimes ? null : rHours, pto: rPto };
       }
@@ -163,36 +176,48 @@ export function mountDayDialog() {
 
     /** @type {Entry | null} */
     let actual = null;
+
     if (f.verified) {
       if (office) {
         if (f.aEnd && !f.aStart) throw new FormError("Timesheet: add the in time, or clear the out time.");
+
         const span = spanHours(f.aStart || null, f.aEnd || null);
+
         actual = { start: f.aStart || null, end: f.aEnd || null, hours: aHours ?? (span === null ? null : round2(span)), pto: aPto };
+
         if (actual.hours === null && actual.pto === null)
           throw new FormError("Timesheet: enter in and out times, hours or PTO, or turn off Verified.");
       } else {
         actual = { start: null, end: null, hours: null, pto: f.status === "wfh" ? null : aPto };
       }
     }
+
     return { recorded, actual };
   }
 
   function save() {
     try {
       if (!isDateKey(form.date)) throw new FormError("Pick a date.");
+
       const { recorded, actual } = readEntries();
+
       if (recorded?.start && !recorded.end) {
         const other = data.days.find((d) => isOpen(d) && d.date !== form.date && d.date !== form.editOf);
+
         if (other) throw new FormError(`You are still clocked in on ${formatDay(other.date, { year: false })}. Clock out there first.`);
       }
+
       const moving = form.editOf !== null && form.editOf !== form.date;
       const isNewDate = form.date !== form.editOf;
+
       if (isNewDate && findDay(form.date) && !window.confirm(`${formatDay(form.date)} already has an entry. Replace it?`)) return;
+
       saveDay({ date: form.date, status: form.status, recorded, actual, note: form.note }, moving ? form.editOf : null);
       toast(form.editOf ? "Day updated" : "Day saved");
       closeDialogs();
     } catch (error) {
       if (!(error instanceof FormError)) throw error;
+
       form.error = error.message;
     }
   }
@@ -202,16 +227,20 @@ export function mountDayDialog() {
     event.preventDefault();
     save();
   };
+
   // Some iOS pickers fire only "change"; mirror bound inputs on change too.
   /** @param {Event} event */
   const onChange = (event) => {
     const el = event.target;
+
     if (el instanceof HTMLInputElement && el.type !== "checkbox" && el.dataset.bind && el.dataset.bind in form) {
       /** @type {Record<string, unknown>} */ (form)[el.dataset.bind] = el.value;
     }
   };
+
   formEl.addEventListener("submit", onSubmit);
   formEl.addEventListener("change", onChange);
+
   group.add(() => {
     formEl.removeEventListener("submit", onSubmit);
     formEl.removeEventListener("change", onChange);
@@ -219,6 +248,7 @@ export function mountDayDialog() {
 
   /** @type {string | null} */
   let pendingDelete = null;
+
   registerActions({
     "open-day-form": () => open(null),
     "edit-day": (el) => {
@@ -238,12 +268,15 @@ export function mountDayDialog() {
     },
     "ask-delete": (el) => {
       pendingDelete = el.dataset.date ?? null;
+
       if (!pendingDelete) return;
+
       deleteText.textContent = `${formatDay(pendingDelete)} will be removed from this device.`;
       openDialog(deleteDialog);
     },
     "confirm-delete": () => {
       if (pendingDelete) deleteDay(pendingDelete);
+
       pendingDelete = null;
       closeDialogs();
       toast("Day deleted");
@@ -251,5 +284,6 @@ export function mountDayDialog() {
   });
 
   group.add(bindDom(dialog, form, { handlers: [show] }));
+
   return () => group.dispose();
 }

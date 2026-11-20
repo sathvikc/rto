@@ -20,6 +20,7 @@ const defaultSettings = {
   workdaysOverride: null,
   releaseDay: WEDNESDAY,
 };
+
 export const DEFAULT_SETTINGS = Object.freeze(defaultSettings);
 
 export const BACKUP_VERSION = 2;

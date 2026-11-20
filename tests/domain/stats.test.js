@@ -15,23 +15,29 @@ describe("monthlyStats", () => {
       plain("2026-11-05", "sick"),
       plain("2026-11-06", "office"),
     ];
+
     const [st] = monthlyStats(days, [], settings, "2026-11-06");
+
     assert.deepEqual([st.denom, st.present, st.presencePct, st.counted, st.wfh], [5, 3, 60, 1, 1]);
   });
 
   test("company holidays drop out of the denominator", () => {
     const days = ["2026-11-23", "2026-11-24", "2026-11-25"].map((d) => office(d, "09:00", "17:00"));
+
     const holidays = [
       { date: "2026-11-26", name: "Thanksgiving" },
       { date: "2026-11-27", name: "" },
     ];
+
     const [st] = monthlyStats(days, holidays, settings, "2026-11-27");
+
     assert.equal(st.denom, 3);
     assert.equal(st.presencePct, 100);
   });
 
   test("tracking month puts a straddling week in the earlier month", () => {
     const days = [office("2026-12-01", "09:00", "17:00")];
+
     assert.equal(monthlyStats(days, [], settings, "2026-12-01")[0].key, "2026-11");
     assert.equal(monthlyStats(days, [], { ...settings, grouping: "calendar" }, "2026-12-01")[0].key, "2026-12");
   });
@@ -39,12 +45,14 @@ describe("monthlyStats", () => {
   test("the average star only counts unverified days that are in the average", () => {
     const days = [office("2026-11-02", "09:00", "17:00"), plain("2026-11-03", "wfh")];
     const [st] = monthlyStats(days, [], settings, "2026-11-06");
+
     assert.deepEqual([st.unverified, st.unverifiedAvg], [2, 1]);
   });
 });
 
 describe("workdaysLeft", () => {
   const days = [office("2026-11-25", "09:00", "17:00"), plain("2026-12-02", "ooo")];
+
   const holidays = [
     { date: "2026-11-26", name: "" },
     { date: "2026-11-27", name: "" },
@@ -70,5 +78,6 @@ test("neededAverage", () => {
 test("combineStats sums months", () => {
   const [a] = monthlyStats([office("2026-11-02", "09:00", "17:00")], [], settings, "2026-11-06");
   const c = combineStats([a, a]);
+
   assert.deepEqual([c.counted, c.avg], [2, 8]);
 });

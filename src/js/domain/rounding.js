@@ -35,7 +35,9 @@ export function graceOf(rule) {
 export function roundMinutes(minutes, rule) {
   const grace = graceOf(rule);
   const past = minutes % STEP_MINUTES;
+
   if (grace === null || past === 0) return minutes;
+
   return past <= grace ? minutes - past : minutes - past + STEP_MINUTES;
 }
 

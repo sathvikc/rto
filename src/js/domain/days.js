@@ -13,11 +13,14 @@ export const EMPTY_ENTRY = Object.freeze({ start: null, end: null, hours: null, 
  */
 export function predictEntry(entry, settings) {
   if (!entry) return null;
+
   if (isTime(entry.start) && isTime(entry.end)) {
     const start = roundTime(entry.start, settings.roundIn);
     const end = roundTime(entry.end, settings.roundOut);
+
     return { start, end, hours: spanHours(start, end), pto: entry.pto };
   }
+
   return { ...entry };
 }
 
@@ -27,6 +30,7 @@ export function predictEntry(entry, settings) {
  */
 export function isOpen(day) {
   const r = day.recorded;
+
   return !!r && isTime(r.start) && !r.end && r.hours === null;
 }
 
@@ -39,18 +43,23 @@ export function isOpen(day) {
  */
 export function resolveDay(day, settings) {
   const verified = day.actual !== null;
+
   /** @type {Entry} */
   let entry;
+
   if (day.actual) {
     const a = day.actual;
+
     entry = { ...a, hours: a.hours ?? spanHours(a.start, a.end) };
   } else {
     entry = predictEntry(day.recorded, settings) ?? EMPTY_ENTRY;
   }
+
   const open = !verified && isOpen(day);
   const work = open ? null : entry.hours;
   const pto = entry.pto;
   const total = work === null && pto === null ? null : (work ?? 0) + (pto ?? 0);
+
   return { verified, open, entry, work, pto, total };
 }
 
@@ -72,6 +81,7 @@ export const countsInAverage = (day, r) => day.status !== "wfh" && r.work !== nu
 export function presenceOf(day, r) {
   if (day.status === "wfh") return 0;
   if (day.status === "ooo" || day.status === "sick") return 1;
+
   return r.work !== null || r.pto !== null || r.open ? 1 : 0;
 }
 
@@ -81,5 +91,6 @@ export function presenceOf(day, r) {
  */
 export function needsVerification(day) {
   if (day.actual || isOpen(day)) return false;
+
   return day.recorded !== null || day.status !== "office";
 }
