@@ -3,7 +3,7 @@ import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { show } from "lume-js/handlers";
 import { backupFileName } from "../../domain/backup.js";
-import { holidayDateOf, holidaysIn } from "../../domain/holidays.js";
+import { holidayDateOf, holidaysIn, usFederalHolidays } from "../../domain/holidays.js";
 import { addDays, isDateKey } from "../../domain/dates.js";
 import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
@@ -18,6 +18,7 @@ import {
   importBackup,
   markExported,
   addHoliday,
+  addHolidays,
   copyHolidaysToYear,
   deleteDay,
   updateHoliday,
@@ -282,7 +283,8 @@ export function mountSettings() {
 
       view.holidayTitle = `Company holidays · ${thisYear()}`;
 
-      // Copy is offered inside the empty state, only when a new year starts.
+      // Empty year: offer last year's list (only at the start of a year),
+      // and the US federal holidays as a starting point.
       const offer = list.length ? null : copyOffer();
 
       render(
@@ -291,12 +293,18 @@ export function mountSettings() {
           ? html`${list.map(holidayRow)}`
           : html`<li class="holiday-list__empty">
               <p>No holidays for ${thisYear()} yet.</p>
-              ${
-                offer &&
-                html`<button type="button" class="btn btn--fit btn--primary" data-action="copy-holidays">
-                  Copy ${offer.from} holidays
-                </button>`
-              }
+              <div class="cluster holiday-list__actions">
+                ${
+                  offer &&
+                  html`<button type="button" class="btn btn--fit btn--primary" data-action="copy-holidays">
+                    Copy ${offer.from} holidays
+                  </button>`
+                }
+                <button type="button" class="btn btn--fit${offer ? "" : " btn--primary"}" data-action="add-us-holidays">
+                  Add US holidays
+                </button>
+              </div>
+              <p class="field__hint">US federal holidays for ${thisYear()}; then delete any your company doesn't give.</p>
             </li>`,
       );
 
@@ -489,6 +497,11 @@ export function mountSettings() {
       deleteDay(el.dataset.date);
       toast("Holiday removed");
     },
+    "add-us-holidays": () => {
+      const added = addHolidays(usFederalHolidays(Number(thisYear())));
+
+      toast(added ? `Added ${plural(added, "US holiday")}. Delete any you don't get.` : "Those dates already have entries.");
+    },
     "copy-holidays": () => {
       const offer = copyOffer();
 
@@ -496,7 +509,7 @@ export function mountSettings() {
 
       const added = copyHolidaysToYear(offer.from, offer.to);
 
-      toast(added ? `Copied ${plural(added, "holiday")} to ${offer.to}. Adjust any dates that move.` : `Nothing to copy.`);
+      toast(added ? `Copied ${plural(added, "holiday")}. Check dates that move.` : "Nothing to copy.");
     },
     export: exportBackup,
     import: () => importInput.click(),

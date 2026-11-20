@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { copyHolidays, holidayDateOf, holidayDay, holidaysAsDays, holidaysIn, placeHoliday } from "../../src/js/domain/holidays.js";
+import {
+  copyHolidays,
+  holidayDateOf,
+  holidayDay,
+  holidaysAsDays,
+  holidaysIn,
+  nthWeekday,
+  placeHoliday,
+  usFederalHolidays,
+} from "../../src/js/domain/holidays.js";
 import { office, plain } from "../helpers.js";
 
 describe("placeHoliday", () => {
@@ -83,5 +92,34 @@ describe("holiday lists", () => {
     );
 
     assert.deepEqual(copyHolidays([...days, ...added], "2026", "2027"), []);
+  });
+});
+
+describe("US federal holidays", () => {
+  test("weekday-based dates are computed for the year", () => {
+    const byName = (/** @type {number} */ year) => Object.fromEntries(usFederalHolidays(year).map((h) => [h.name, h.date]));
+    const y2026 = byName(2026);
+    const y2027 = byName(2027);
+
+    assert.equal(y2026["Martin Luther King Jr. Day"], "2026-01-19");
+    assert.equal(y2026["Presidents Day"], "2026-02-16");
+    assert.equal(y2026["Memorial Day"], "2026-05-25");
+    assert.equal(y2026["Labor Day"], "2026-09-07");
+    assert.equal(y2026.Thanksgiving, "2026-11-26");
+    assert.equal(y2027.Thanksgiving, "2027-11-25");
+    assert.equal(y2027["Memorial Day"], "2027-05-31");
+  });
+
+  test("nthWeekday handles first and last", () => {
+    assert.equal(nthWeekday(2026, 9, 1, 1), "2026-09-07");
+    assert.equal(nthWeekday(2026, 5, 1, -1), "2026-05-25");
+  });
+
+  test("weekend ones are observed when added", () => {
+    const { days } = holidaysAsDays([], usFederalHolidays(2026));
+
+    // Jul 4 2026 is a Saturday -> Fri Jul 3.
+    assert.equal(days.find((d) => d.note === "Independence Day")?.date, "2026-07-03");
+    assert.equal(days.length, 11);
   });
 });

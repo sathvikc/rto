@@ -672,6 +672,10 @@
     list-style: none;
   }
 
+  .holiday-list__actions {
+    justify-content: center;
+  }
+
   .holiday-list__empty p {
     margin-bottom: var(--space-3);
   }
@@ -806,9 +810,10 @@
     padding-inline-end: var(--space-4);
   }
 
+  /* One line when it fits; long messages wrap instead of being cut off. */
   .toast__message {
     padding-block: 6px;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .toast__action {

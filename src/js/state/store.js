@@ -14,7 +14,7 @@ import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js
 import { toDateKey } from "../domain/dates.js";
 import { EMPTY_ENTRY, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
 import { buildBackup, mergeDays, parseImport } from "../domain/backup.js";
-import { copyHolidays, placeHoliday } from "../domain/holidays.js";
+import { copyHolidays, holidaysAsDays, placeHoliday } from "../domain/holidays.js";
 import { fromMinutes, round2, timeOf, toMinutes } from "../domain/time.js";
 import { deleteDocument, loadDocument, requestPersistence, saveDocument } from "./persistence.js";
 import { formatTime } from "../lib/format.js";
@@ -452,6 +452,25 @@ export function updateHoliday(recordDate, change) {
   saveDay(placed.day, recordDate);
 
   return null;
+}
+
+/**
+ * Add several holidays at once (e.g. the US federal list). Dates you
+ * already logged keep your record.
+ * @param {import("../domain/types.js").Holiday[]} holidays
+ * @returns {number} how many were added
+ */
+export function addHolidays(holidays) {
+  const at = new Date().toISOString();
+  const { days, added } = holidaysAsDays(data.days, holidays);
+
+  if (added)
+    data.days = mergeDays(
+      data.days,
+      days.map((d) => (d.updatedAt ? d : { ...d, updatedAt: at })),
+    ).days;
+
+  return added;
 }
 
 /**

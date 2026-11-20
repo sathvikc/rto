@@ -148,3 +148,49 @@ export function copyHolidays(days, fromYear, toYear) {
 
   return added;
 }
+
+/**
+ * The nth weekday of a month ("3rd Monday of January"); n = -1 for the last.
+ * @param {number} year
+ * @param {number} month 1-12
+ * @param {number} dow   0 = Sunday
+ * @param {number} n
+ */
+export function nthWeekday(year, month, dow, n) {
+  if (n > 0) {
+    const first = new Date(year, month - 1, 1).getDay();
+    const day = 1 + ((dow - first + 7) % 7) + (n - 1) * 7;
+
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  const lastDate = new Date(year, month, 0);
+  const day = lastDate.getDate() - ((lastDate.getDay() - dow + 7) % 7);
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * US federal holidays for a year (real dates; weekend ones are observed
+ * when placed). A starting point: delete the ones your company doesn't give.
+ * @param {number} year
+ * @returns {Holiday[]}
+ */
+export function usFederalHolidays(year) {
+  const MON = 1;
+  const THU = 4;
+
+  return [
+    { date: `${year}-01-01`, name: "New Year's Day" },
+    { date: nthWeekday(year, 1, MON, 3), name: "Martin Luther King Jr. Day" },
+    { date: nthWeekday(year, 2, MON, 3), name: "Presidents Day" },
+    { date: nthWeekday(year, 5, MON, -1), name: "Memorial Day" },
+    { date: `${year}-06-19`, name: "Juneteenth" },
+    { date: `${year}-07-04`, name: "Independence Day" },
+    { date: nthWeekday(year, 9, MON, 1), name: "Labor Day" },
+    { date: nthWeekday(year, 10, MON, 2), name: "Columbus Day" },
+    { date: `${year}-11-11`, name: "Veterans Day" },
+    { date: nthWeekday(year, 11, THU, 4), name: "Thanksgiving" },
+    { date: `${year}-12-25`, name: "Christmas Day" },
+  ];
+}
