@@ -64,6 +64,8 @@
     /* Size */
     --page-max: 35rem;
     --tap-min: 2.75rem; /* 44px, Apple's minimum touch target */
+    --control-sm: 2.125rem; /* chips, small buttons, segments */
+    --control-md: 2.375rem; /* compact inputs, selects */
     --tabbar-height: 3.5rem;
   }
 

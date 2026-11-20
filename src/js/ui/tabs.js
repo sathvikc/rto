@@ -22,7 +22,7 @@ function tabFromHash(hash) {
 }
 
 /** @param {Tab} tab */
-export function goToTab(tab) {
+function goToTab(tab) {
   if (location.hash !== `#${tab}`) location.hash = tab;
   else ui.tab = tab;
 }

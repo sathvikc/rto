@@ -11,7 +11,8 @@ import { model } from "../../state/model.js";
 import { data, deleteDay, findDay, predictedTimesheet, saveDay, toast, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { closeDialogs, openDialog } from "../dialogs.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { byId, render } from "../dom.js";
 
 /** @import { DayStatus, Entry } from "../../domain/types.js" */
 
@@ -21,6 +22,7 @@ const STATUS_HINT = {
   wfh: "Presence 0. Not counted in your average.",
   ooo: "Full day out: presence 1, not counted in your average. Working part of the day? Choose Office and add PTO instead.",
   sick: "Sick day: presence 1, not counted in your average. Working part of the day? Choose Office and add PTO instead.",
+  holiday: "Company holiday: not a workday, so it's left out of presence and your average. Put its name in the note.",
 };
 
 const STATUS_OPTIONS = STATUSES.map((s) => /** @type {const} */ ([s, STATUS_LABEL[s]]));
@@ -94,21 +96,21 @@ export function mountDayDialog() {
       const { status, rStart, rEnd, rHours, rPto } = form;
       const { settings } = data;
 
-      render(statusEl, html`${segmentButtons(STATUS_OPTIONS, status, "day-status")}`);
+      render(statusEl, segmentButtons(STATUS_OPTIONS, status, "day-status"));
 
       const today = ui.today;
       const yesterday = addDays(today, -1);
 
       render(
         dateChips,
-        html`${segmentButtons(
+        segmentButtons(
           [
             [today, "Today"],
             [yesterday, "Yesterday"],
           ],
           form.date,
           "day-date",
-        )}`,
+        ),
       );
 
       const office = status === "office";
@@ -118,7 +120,7 @@ export function mountDayDialog() {
 
       form.statusHint = STATUS_HINT[status];
       form.showTimes = office;
-      form.showPto = status !== "wfh";
+      form.showPto = status !== "wfh" && status !== "holiday";
       form.ptoLabelHint = office ? "(optional, for a partial day off)" : "";
 
       // A timesheet can only confirm a day that has happened.
@@ -251,7 +253,11 @@ export function mountDayDialog() {
 
       if (isNewDate && findDay(form.date) && !window.confirm(`${formatDay(form.date)} already has an entry. Replace it?`)) return;
 
-      saveDay({ date: form.date, status: form.status, recorded, actual, note: form.note }, moving ? form.editOf : null);
+      // Keep a holiday's real date when it's edited in place.
+      const before = form.editOf ? findDay(form.editOf) : null;
+      const observedFrom = form.status === "holiday" && !moving ? before?.observedFrom : undefined;
+
+      saveDay({ date: form.date, status: form.status, recorded, actual, note: form.note, observedFrom }, moving ? form.editOf : null);
       toast(form.editOf ? "Day updated" : "Day saved");
       closeDialogs();
     } catch (error) {

@@ -5,6 +5,8 @@ import { toDateKey } from "./domain/dates.js";
 import "./state/model.js";
 import { flush, loadState, ui } from "./state/store.js";
 import { listenForActions } from "./ui/actions.js";
+// Expands the <ui-*> components in index.html; must run before views mount.
+import "./ui/elements.js";
 import { setUpDialogs } from "./ui/dialogs.js";
 import { setUpTabs } from "./ui/tabs.js";
 import { setUpTheme } from "./ui/theme.js";
@@ -69,7 +71,20 @@ async function start() {
   app.add(() => clearInterval(timer));
 
   // iOS can suspend a backgrounded app at any time: save on the way out.
-  const onVisibility = () => (document.visibilityState === "hidden" ? flush() : tick());
+  const onVisibility = () => {
+    if (document.visibilityState !== "hidden") {
+      tick();
+
+      return;
+    }
+
+    // Commit a field still being edited (inputs save on "change", which
+    // fires on blur), then save once that change has gone through.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+
+    queueMicrotask(() => void flush());
+  };
+
   const onPageHide = () => void flush();
 
   document.addEventListener("visibilitychange", onVisibility);

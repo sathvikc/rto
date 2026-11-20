@@ -65,21 +65,21 @@ export function resolveDay(day, settings) {
 
 /**
  * Average hours count non-WFH days with work hours (work + PTO, like the
- * timesheet's "hours with PTO"). PTO-only, WFH and blank days are left out.
+ * timesheet's "hours with PTO"). PTO-only, WFH, Holiday and blank days are left out.
  * @param {Day} day
  * @param {Resolved} r
  */
-export const countsInAverage = (day, r) => day.status !== "wfh" && r.work !== null;
+export const countsInAverage = (day, r) => day.status !== "wfh" && day.status !== "holiday" && r.work !== null;
 
 /**
  * WFH = 0. OOO and Sick = 1. Office = 1 when the day has hours, PTO or an
- * open punch, else 0.
+ * open punch, else 0. (Holiday days are left out of presence entirely.)
  * @param {Day} day
  * @param {Resolved} r
  * @returns {0 | 1}
  */
 export function presenceOf(day, r) {
-  if (day.status === "wfh") return 0;
+  if (day.status === "wfh" || day.status === "holiday") return 0;
   if (day.status === "ooo" || day.status === "sick") return 1;
 
   return r.work !== null || r.pto !== null || r.open ? 1 : 0;
@@ -128,3 +128,14 @@ export function unmatchDay(day) {
  * @returns {Day}
  */
 export const unverifyFuture = (day, today) => (day.date > today ? unmatchDay(day) : day);
+
+/**
+ * A record with nothing logged: no times, hours or PTO in either entry.
+ * @param {Day} day
+ */
+export function isBlankDay(day) {
+  /** @param {Entry | null} e */
+  const empty = (e) => !e || (!e.start && !e.end && e.hours === null && e.pto === null);
+
+  return day.status === "office" && empty(day.recorded) && empty(day.actual);
+}

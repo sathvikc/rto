@@ -1,33 +1,50 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import {
-  backupFileName,
-  buildBackup,
-  holidaysToText,
-  mergeDays,
-  parseHolidays,
-  parseImport,
-  replaceHolidaysForYear,
-} from "../../src/js/domain/backup.js";
-import { office } from "../helpers.js";
+import { backupFileName, buildBackup, mergeDays, parseImport } from "../../src/js/domain/backup.js";
+import { holidayDay } from "../../src/js/domain/holidays.js";
+import { office, plain } from "../helpers.js";
 
 describe("parseImport", () => {
   test("round-trips this app's backup", () => {
-    const days = [office("2026-11-16", "08:58", "16:20")];
-
-    const backup = buildBackup({
-      days,
-      holidays: [{ date: "2026-11-26", name: "Thanksgiving" }],
-      settings: DEFAULT_SETTINGS,
-      createdAt: null,
-    });
-
+    const days = [office("2026-11-16", "08:58", "16:20"), holidayDay("2026-11-26", "Thanksgiving")];
+    const backup = buildBackup({ days, settings: DEFAULT_SETTINGS, createdAt: null });
     const parsed = parseImport(JSON.parse(JSON.stringify(backup)));
 
     assert.deepEqual(parsed.days, days);
-    assert.equal(parsed.holidays.length, 1);
     assert.deepEqual(parsed.settings.roundOut, DEFAULT_SETTINGS.roundOut);
+  });
+
+  test("an older backup's holiday list becomes Holiday days; logged days are kept", () => {
+    const parsed = parseImport({
+      days: [
+        office("2026-11-26", "09:00", "12:00"), // worked on the holiday: keep
+        plain("2026-02-16", "office"), // blank row: becomes the holiday
+      ],
+      holidays: [
+        { date: "2026-11-26", name: "Thanksgiving" },
+        { date: "2026-02-16", name: "Presidents Day" },
+        { date: "2026-12-25", name: "Christmas Day" },
+        { date: "nope" },
+      ],
+    });
+
+    assert.equal(parsed.holidays, 2);
+    assert.equal(parsed.days.find((d) => d.date === "2026-11-26")?.status, "office");
+
+    assert.deepEqual(
+      parsed.days.find((d) => d.date === "2026-02-16"),
+      holidayDay("2026-02-16", "Presidents Day"),
+    );
+
+    assert.equal(parsed.days.find((d) => d.date === "2026-12-25")?.note, "Christmas Day");
+  });
+
+  test("observedFrom survives a backup round-trip", () => {
+    const days = [holidayDay("2026-07-03", "Independence Day", "2026-07-04")];
+    const parsed = parseImport(JSON.parse(JSON.stringify(buildBackup({ days, settings: DEFAULT_SETTINGS, createdAt: null }))));
+
+    assert.equal(parsed.days[0].observedFrom, "2026-07-04");
   });
 
   test("flat rows: timesheet rows verified, punches unverified with raw times", () => {
@@ -54,50 +71,11 @@ describe("parseImport", () => {
 
   test("rejects documents without days and ignores invalid settings", () => {
     assert.throws(() => parseImport({ nope: true }), /No days/);
+
     const parsed = parseImport({ days: [], settings: { grouping: "weekly", target: 99, roundIn: { mode: "sideways" } } });
 
     assert.deepEqual(parsed.settings, {});
   });
-});
-
-test("holiday text round-trips, sorted and de-duplicated", () => {
-  const { list, invalid } = parseHolidays(
-    "2026-11-27 Day after\n2026-11-26 Thanksgiving\n\nnope\n2026-02-30 Bad\n2026-11-26 Thanksgiving Day",
-  );
-
-  assert.deepEqual(
-    list.map((h) => h.date),
-    ["2026-11-26", "2026-11-27"],
-  );
-
-  assert.equal(list[0].name, "Thanksgiving Day");
-  assert.equal(invalid, 2);
-  assert.equal(holidaysToText(list), "2026-11-26 Thanksgiving Day\n2026-11-27 Day after");
-});
-
-test("saving one year's holidays keeps the other years", () => {
-  const existing = [
-    { date: "2026-11-26", name: "Thanksgiving" },
-    { date: "2026-12-25", name: "Christmas Day" },
-    { date: "2027-01-01", name: "Old" },
-  ];
-
-  const next = replaceHolidaysForYear(existing, "2027", [
-    { date: "2027-01-01", name: "New Year's Day" },
-    { date: "2027-11-25", name: "Thanksgiving" },
-    { date: "2026-12-24", name: "Christmas Eve" },
-  ]);
-
-  assert.deepEqual(
-    next.map((h) => `${h.date} ${h.name}`),
-    [
-      "2026-11-26 Thanksgiving",
-      "2026-12-24 Christmas Eve",
-      "2026-12-25 Christmas Day",
-      "2027-01-01 New Year's Day",
-      "2027-11-25 Thanksgiving",
-    ],
-  );
 });
 
 test("import merge: the file wins on the same date, other local days are kept", () => {

@@ -1,29 +1,25 @@
-/** @import { Day, Holiday, MonthStat, Settings } from "./types.js" */
+/** @import { Day, MonthStat, Settings } from "./types.js" */
 import { addDays, groupKey, isWeekday, startOfWeekSunday } from "./dates.js";
 import { countsInAverage, isOpen, presenceOf, resolveDay } from "./days.js";
 
 /** Longest a tracking month can run past its calendar month's 1st, days. */
 const GROUP_SCAN_DAYS = 40;
 
-/** @param {Holiday[]} holidays */
-const holidayDates = (holidays) => new Set(holidays.map((h) => h.date));
-
 /**
  * Monthly average and presence, recalculated from the daily records.
  *
  * Presence % = present days / Mon-Fri weekdays of the weeks that have at
- * least one record in the month, up to today, minus company holidays. A
+ * least one record in the month, up to today, minus Holiday days. A
  * weekday with no record inside a logged week counts as absent; a week
- * with no records at all is not counted.
+ * with no records at all is not counted. Only day records are read, so
+ * settings can't change a past month's numbers.
  *
  * @param {Day[]} days
- * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
  * @returns {MonthStat[]} oldest first
  */
-export function monthlyStats(days, holidays, settings, today) {
-  const holidaySet = holidayDates(holidays);
+export function monthlyStats(days, settings, today) {
   const currentKey = groupKey(today, settings.grouping);
 
   /** @type {Map<string, Day[]>} */
@@ -73,9 +69,8 @@ export function monthlyStats(days, holidays, settings, today) {
           if (date > today || groupKey(date, settings.grouping) !== key) continue;
 
           const rec = resolved.get(date);
-          const workedOnHoliday = rec && rec.day.status === "office" && rec.r.work !== null;
 
-          if (holidaySet.has(date) && !workedOnHoliday) continue;
+          if (rec?.day.status === "holiday") continue;
 
           denom++;
 
@@ -106,18 +101,16 @@ export function monthlyStats(days, holidays, settings, today) {
 /**
  * Office days left in a month that can still move the average: Mon-Fri,
  * from today on, in the month (a tracking month runs into the next
- * calendar month), not a company holiday, not already planned as
- * WFH/OOO/Sick, and not today when today is already logged.
+ * calendar month), not already a Holiday/WFH/OOO/Sick day, and not today
+ * when today is already logged.
  *
  * @param {string} monthKey
  * @param {Day[]} days
- * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
  * @returns {string[]} the dates, in order
  */
-export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
-  const holidaySet = holidayDates(holidays);
+export function workdaysLeftDates(monthKey, days, settings, today) {
   const byDate = new Map(days.map((d) => [d.date, d]));
   const first = `${monthKey}-01`;
   const last = addDays(first, GROUP_SCAN_DAYS);
@@ -126,7 +119,7 @@ export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
   const dates = [];
 
   for (let date = today > first ? today : first; date <= last; date = addDays(date, 1)) {
-    if (groupKey(date, settings.grouping) !== monthKey || !isWeekday(date) || holidaySet.has(date)) continue;
+    if (groupKey(date, settings.grouping) !== monthKey || !isWeekday(date)) continue;
 
     const day = byDate.get(date);
 
@@ -143,12 +136,10 @@ export function workdaysLeftDates(monthKey, days, holidays, settings, today) {
  * How many of {@link workdaysLeftDates} there are.
  * @param {string} monthKey
  * @param {Day[]} days
- * @param {Holiday[]} holidays
  * @param {Settings} settings
  * @param {string} today
  */
-export const workdaysLeft = (monthKey, days, holidays, settings, today) =>
-  workdaysLeftDates(monthKey, days, holidays, settings, today).length;
+export const workdaysLeft = (monthKey, days, settings, today) => workdaysLeftDates(monthKey, days, settings, today).length;
 
 /**
  * Average needed on each remaining day to finish the month at `target`.

@@ -1,10 +1,13 @@
 /** Home: the current month at a glance, and the average still needed. */
 import { effect } from "lume-js";
 import { startOfWeekSunday } from "../../domain/dates.js";
-import { formatDateRange, formatDay, formatHours, monthLong, monthName, plural } from "../../lib/format.js";
+import { formatDateRange, formatDay, formatHours, formatPercent, monthLong, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { data, updateSettings } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { statGrid } from "../components/stat-grid.js";
+import { actionButton } from "../components/button.js";
+import { starNote, unverifiedMark } from "../components/star.js";
 import { byId, html, render } from "../dom.js";
 
 const MAX_WORKDAYS = 31;
@@ -43,52 +46,42 @@ export function mountMonthCard() {
 
     render(
       card,
-      html`<header class="month-card__head">
+      html`<header class="cluster cluster--between cluster--baseline">
           <h2 class="month-card__title">${monthName(currentKey)}</h2>
-          <button type="button" class="link-btn text-small" data-action="go-history">Details</button>
+          ${actionButton("Details", "go-history", { className: "link-btn text-small" })}
         </header>
 
-        <dl class="stat-grid">
-          <div class="stat-grid__item">
-            <dt>Average</dt>
-            <dd class="${onTrack ? "text-ok" : ""}">
-              ${st?.avg == null ? "—" : formatHours(st.avg, 1)}${st?.unverifiedAvg ? html`<sup class="star">*</sup>` : ""}
-            </dd>
-          </div>
-          <div class="stat-grid__item">
-            <dt>Presence</dt>
-            <dd>${st?.presencePct == null ? "—" : `${st.presencePct}%`}</dd>
-          </div>
-          <div class="stat-grid__item">
-            <dt>Office days</dt>
-            <dd>${st?.counted ?? 0}</dd>
-          </div>
-        </dl>
+        ${statGrid([
+          {
+            label: "Average",
+            value: html`${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && unverifiedMark()}`,
+            className: onTrack ? "text-ok" : "",
+          },
+          { label: "Presence", value: formatPercent(st?.presencePct) },
+          { label: "Office days", value: st?.counted ?? 0 },
+        ])}
 
-        <div class="month-card__needed">
+        <div class="cluster cluster--between cluster--top month-card__needed">
           <div>
-            <p class="text-dim text-small">Needed per day</p>
-            <p class="figure">${needed === null ? "—" : formatHours(needed, 1)}</p>
+            <p class="caption">Needed per day</p>
+            <p class="figure">${formatHours(needed, 1)}</p>
           </div>
           <div class="text-end">
-            <p class="text-dim text-small">Office days left</p>
+            <p class="caption">Office days left</p>
             <div class="stepper">
-              <button type="button" class="round-btn" data-action="workdays-dec" aria-label="Fewer office days left">−</button>
+              ${actionButton("−", "workdays-dec", { className: "icon-btn icon-btn--small", label: "Fewer office days left" })}
               <output class="stepper__value" aria-live="polite">${left}</output>
-              <button type="button" class="round-btn" data-action="workdays-inc" aria-label="More office days left">+</button>
+              ${actionButton("+", "workdays-inc", { className: "icon-btn icon-btn--small", label: "More office days left" })}
             </div>
-            ${
-              overridden &&
-              html`<button type="button" class="link-btn text-small" data-action="workdays-reset">Reset to ${autoLeft}</button>`
-            }
+            ${overridden && actionButton(`Reset to ${autoLeft}`, "workdays-reset", { className: "link-btn text-small" })}
           </div>
         </div>
 
-        <p class="text-dim text-small">
+        <p class="caption">
           ${left > 0 ? `To finish at ${target}h over ${plural(left, "more office day")}.` : "No office days left this month."}
-          ${!!st?.unverifiedAvg && html` <span class="star">*</span> ${plural(st.unverifiedAvg, "day")} not verified.`}
+          ${!!st?.unverifiedAvg && starNote(`${plural(st.unverifiedAvg, "day")} not verified.`)}
         </p>
-        ${spillNote && html`<p class="text-dim text-small">${spillNote}</p>`}`,
+        ${spillNote && html`<p class="caption">${spillNote}</p>`}`,
     );
   });
 }

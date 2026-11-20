@@ -2,11 +2,16 @@
 import { batch, effect } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { groupKey } from "../../domain/dates.js";
-import { formatDay, formatHours, monthName, plural } from "../../lib/format.js";
+import { formatDay, formatHours, formatPercent, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { data, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { statGrid } from "../components/stat-grid.js";
+import { segmentButtons } from "../components/segmented.js";
+import { actionButton } from "../components/button.js";
+import { selectOptions } from "../components/select-options.js";
+import { starNote, unverifiedMark } from "../components/star.js";
+import { byId, html, render } from "../dom.js";
 
 export function mountMonthSummary() {
   const group = createCleanupGroup();
@@ -24,7 +29,7 @@ export function mountMonthSummary() {
     effect(() => {
       const { monthKeys, selKey } = model;
 
-      render(select, html`${monthKeys.map((k) => html`<option value="${k}">${monthName(k)}</option>`)}`);
+      render(select, selectOptions(monthKeys.map((k) => /** @type {const} */ ([k, monthName(k)]))));
       select.value = selKey;
     }),
   );
@@ -36,14 +41,14 @@ export function mountMonthSummary() {
 
       render(
         viewToggle,
-        html`${segmentButtons(
+        segmentButtons(
           [
             ["all", "All days"],
             ["verified", "Verified only"],
           ],
           verifiedOnly ? "verified" : "all",
           "data-view",
-        )}`,
+        ),
       );
 
       // In the dashboard view, covered days you haven't matched yet count as
@@ -51,9 +56,9 @@ export function mountMonthSummary() {
       const pending = verifiedOnly ? model.toVerify.filter((d) => groupKey(d.date, data.settings.grouping) === selKey).length : 0;
 
       const pendingNote = pending
-        ? html`<p class="text-dim text-small">
-            <span class="star">*</span> ${plural(pending, "day")} through ${formatDay(coverage, { year: false })} not matched yet; counted
-            as absent here. <button type="button" class="link-btn" data-action="open-verify">Review</button>
+        ? html`<p class="caption">
+            ${starNote(`${plural(pending, "day")} through ${formatDay(coverage, { year: false })} not matched yet; counted as absent here.`)}
+            ${actionButton("Review", "open-verify", { className: "link-btn" })}
           </p>`
         : "";
 
@@ -64,8 +69,8 @@ export function mountMonthSummary() {
       const compare =
         differs && other
           ? html`<p class="compare">
-              ${otherLabel}: <strong>${other.avg == null ? "—" : formatHours(other.avg, 1)}</strong> avg ·
-              <strong>${other.presencePct == null ? "—" : `${other.presencePct}%`}</strong> presence
+              ${otherLabel}: <strong>${formatHours(other.avg, 1)}</strong> avg ·
+              <strong>${formatPercent(other.presencePct)}</strong> presence
             </p>`
           : "";
 
@@ -82,32 +87,21 @@ export function mountMonthSummary() {
 
       render(
         summary,
-        html`<p class="text-dim text-small">
+        html`<p class="caption">
             ${selKey === currentKey ? "This month" : monthName(selKey)} · ${grouping}
             month${verifiedOnly ? ` · verified, through ${formatDay(coverage, { year: false })}` : ""}
           </p>
-          <p class="figure">${st?.avg == null ? "—" : formatHours(st.avg, 1)}${st?.unverifiedAvg ? html`<sup class="star">*</sup>` : ""}</p>
-          <p class="text-dim text-small">${verdict}</p>
-          <dl class="stat-grid">
-            <div class="stat-grid__item">
-              <dt>Office days</dt>
-              <dd>${st?.counted ?? 0}</dd>
-            </div>
-            <div class="stat-grid__item">
-              <dt>Presence</dt>
-              <dd>${st?.presencePct == null ? "—" : `${st.presencePct}%`}</dd>
-            </div>
-            <div class="stat-grid__item">
-              <dt>WFH</dt>
-              <dd>${st?.wfh ?? 0}</dd>
-            </div>
-          </dl>
-          ${!!st?.denom && html`<p class="text-dim text-small">${st.present} of ${st.denom} weekdays present in the weeks logged.</p>`}
+          <p class="figure">${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && unverifiedMark()}</p>
+          <p class="caption">${verdict}</p>
+          ${statGrid([
+            { label: "Office days", value: st?.counted ?? 0 },
+            { label: "Presence", value: formatPercent(st?.presencePct) },
+            { label: "WFH", value: st?.wfh ?? 0 },
+          ])}
+          ${!!st?.denom && html`<p class="caption">${st.present} of ${st.denom} weekdays present in the weeks logged.</p>`}
           ${
             !!st?.unverified &&
-            html`<p class="text-dim text-small">
-              <span class="star">*</span> ${plural(st.unverified, "day")} not verified against the timesheet.
-            </p>`
+            html`<p class="caption">${starNote(`${plural(st.unverified, "day")} not verified against the timesheet.`)}</p>`
           }
           ${pendingNote} ${compare}`,
       );

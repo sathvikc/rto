@@ -7,14 +7,15 @@ import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { classToggle, show } from "lume-js/handlers";
 import { STATUS_LABEL } from "../../domain/constants.js";
-import { isWeekday, toDateKey } from "../../domain/dates.js";
+import { isWeekday, pad2, toDateKey } from "../../domain/dates.js";
 import { resolveDay } from "../../domain/days.js";
-import { leavePlan } from "../../domain/shift.js";
+import { leaveRows } from "../../domain/shift.js";
 import { toMinutes } from "../../domain/time.js";
-import { formatClock, formatDay, formatHours, formatLongDate, formatTime } from "../../lib/format.js";
+import { formatClock, formatDay, formatHours, formatLongDate, formatTime, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { clockIn, clockOut, data, flush, setTodayStatus, toast, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { actionButton } from "../components/button.js";
 import { byId, html, render, trusted } from "../dom.js";
 import { openPunchDialog } from "./punch-dialog.js";
 
@@ -54,7 +55,7 @@ export function mountNow() {
 
       view.dateLine = formatLongDate(now);
       view.clockText = formatClock(now);
-      view.secondsText = String(now.getSeconds()).padStart(2, "0");
+      view.secondsText = pad2(now.getSeconds());
 
       if (open?.recorded?.start && !model.staleShift) {
         const overnight = open.date === toDateKey(now) ? 0 : 1440;
@@ -92,7 +93,10 @@ export function mountNow() {
         return; // The ticking effect fills in the detail line.
       }
 
-      if (todayDay && todayDay.status !== "office") {
+      if (todayHoliday) {
+        view.statusLine = "Company holiday";
+        view.detailLine = `${todayHoliday.note ?? "Enjoy the day off"}${todayHoliday.observedFrom ? ` (observed for ${formatDay(todayHoliday.observedFrom, { year: false })})` : ""}`;
+      } else if (todayDay && todayDay.status !== "office") {
         view.statusLine = `Today: ${STATUS_LABEL[todayDay.status]}`;
         view.detailLine = "Not an office day";
       } else if (todayDay?.recorded?.start && todayDay.recorded.end) {
@@ -103,7 +107,7 @@ export function mountNow() {
         view.detailStatic = false;
       } else {
         view.statusLine = "Off the clock";
-        view.detailLine = todayHoliday ? `Company holiday${todayHoliday.name ? `: ${todayHoliday.name}` : ""}` : "Not clocked in";
+        view.detailLine = "Not clocked in";
       }
     }),
   );
@@ -123,36 +127,80 @@ export function mountNow() {
       }
 
       const overnight = openDay.date === toDateKey(now) ? 0 : 1440;
-      const p = leavePlan(start, minutesOf(now) + overnight, settings, needed ?? settings.target);
+      const stat = model.currentStat;
 
-      if (!p) {
+      // Other office days left this month, after today (left includes today).
+      const restDays = Math.max(0, model.left - 1);
+      const restHours = needed !== null && needed > 0 ? needed : settings.target;
+
+      const { rows, next } = leaveRows(start, minutesOf(now) + overnight, settings, {
+        stat,
+        paceHours: needed,
+        targetHours: settings.target,
+        restDays,
+      });
+
+      if (!rows.length) {
         plan.markup = "";
 
         return;
       }
 
-      const showNext = p.next && p.next.out !== p.now.out && (!p.goal || p.next.at !== p.goal.at);
+      const currentAvg = stat?.avg ?? null;
 
-      plan.markup = html`<p class="leave-plan__head">If you leave… <span>timesheet out · hours</span></p>
-        <p class="leave-plan__row">
-          <span class="text-dim">Now</span>
-          <span>${formatTime(p.now.out)} · <strong>${formatHours(p.now.hours)}</strong></span>
+      /** @param {import("../../domain/shift.js").LeaveRow} row */
+      const label = (row) =>
+        row.kinds
+          .map((k) =>
+            k === "now" ? "Now" : k === "pace" ? `On pace (${formatHours(needed, 1)})` : `Full ${formatHours(settings.target)} day`,
+          )
+          .join(" · ");
+
+      // Compare each projected month end with the target: on pace lands on
+      // it (=), a shorter day below (▼), a longer one above (▲).
+      const EPSILON = 0.005;
+
+      /** @param {number} avg */
+      const versusTarget = (avg) => (avg > settings.target + EPSILON ? 1 : avg < settings.target - EPSILON ? -1 : 0);
+
+      const ARROW = { 1: "▲", 0: "=", [-1]: "▼" };
+      const CLASS = { 1: "leave-table__avg--ok", 0: "leave-table__avg--ok", [-1]: "leave-table__avg--below" };
+
+      plan.markup = html`<div class="cluster cluster--between cluster--baseline leave-plan__head">
+          <span>If you leave…</span>
+          <span>Month avg so far <strong>${formatHours(currentAvg, 2)}</strong></span>
+        </div>
+        <table class="leave-table">
+          <thead class="eyebrow">
+            <tr>
+              <th scope="col">Leave</th>
+              <th scope="col">Today</th>
+              <th scope="col">Month end</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => {
+              const vs = versusTarget(row.average);
+
+              return html`<tr class="${row.kinds.includes("now") ? "" : "leave-table__goal"}">
+                <th scope="row">
+                  <strong>${row.kinds.includes("now") ? formatClock(now) : formatTime(row.at)}</strong>
+                  <span>${label(row)} · out ${formatTime(row.out)}</span>
+                </th>
+                <td>${formatHours(row.hours)}</td>
+                <td class="${CLASS[vs]}">
+                  ${formatHours(row.average, 2)}
+                  <span class="leave-table__trend" aria-label="${vs > 0 ? "above" : vs < 0 ? "below" : "on"} target">${ARROW[vs]}</span>
+                </td>
+              </tr>`;
+            })}
+          </tbody>
+        </table>
+        <p class="leave-plan__tip">
+          Month end vs your ${formatHours(settings.target)}
+          target${restDays > 0 ? `, assuming your other ${plural(restDays, "office day")} at ${formatHours(restHours, 1)}` : ""}.
         </p>
-        ${
-          showNext &&
-          p.next &&
-          html`<p class="leave-plan__row">
-            <span class="text-dim">At ${formatTime(p.next.at)}+</span>
-            <span>${formatTime(p.next.out)} · <strong>${formatHours(p.next.hours)}</strong></span>
-          </p>`
-        }
-        ${
-          p.goal &&
-          html`<p class="leave-plan__row leave-plan__row--goal">
-            <span>At ${formatTime(p.goal.at)}+ for ${formatHours(needed ?? settings.target, 1)} pace</span>
-            <span>${formatTime(p.goal.out)} · <strong>${formatHours(p.goal.hours)}</strong></span>
-          </p>`
-        }`.value;
+        ${next && html`<p class="leave-plan__tip">Leave after ${formatTime(next.at)} and the timesheet rounds up to ${formatTime(next.out)} (${formatHours(next.hours)}).</p>`}`.value;
     }),
   );
 
@@ -168,18 +216,24 @@ export function mountNow() {
         return;
       }
 
-      if (todayDay && todayDay.status !== "office") {
-        plan.quick = html`<span class="text-dim text-small">Marked ${STATUS_LABEL[todayDay.status]} today.</span>
-          <button type="button" class="link-btn" data-action="today-status" data-value="office">Undo</button>`.value;
+      if (todayHoliday) {
+        plan.quick = "";
 
         return;
       }
 
-      const late = isWeekday(ui.today) && !todayHoliday && minutesOf(now) >= LATE_PROMPT_MINUTES;
+      if (todayDay && todayDay.status !== "office") {
+        plan.quick = html`<span class="caption">Marked ${STATUS_LABEL[todayDay.status]} today.</span>
+          ${actionButton("Undo", "today-status", { className: "link-btn", value: "office" })}`.value;
 
-      plan.quick = html`<span class="text-dim text-small">${late ? "Not clocked in yet." : "Not in the office today?"}</span>
+        return;
+      }
+
+      const late = isWeekday(ui.today) && minutesOf(now) >= LATE_PROMPT_MINUTES;
+
+      plan.quick = html`<span class="caption">${late ? "Not clocked in yet." : "Not in the office today?"}</span>
         <span class="cluster">
-          ${QUICK_STATUSES.map((s) => html`<button type="button" class="chip" data-action="today-status" data-value="${s}">${STATUS_LABEL[s]}</button>`)}
+          ${QUICK_STATUSES.map((s) => actionButton(STATUS_LABEL[s], "today-status", { className: "chip", value: s }))}
         </span>`.value;
     }),
   );

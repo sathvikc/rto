@@ -6,7 +6,7 @@
  * (Lume's computed().value is not tracked by effects, so derived values
  * live in a reactive store written by one effect instead.)
  */
-/** @import { Day, Holiday, MonthStat } from "../domain/types.js" */
+/** @import { Day, MonthStat } from "../domain/types.js" */
 import { batch, effect, state } from "lume-js";
 import { groupKey } from "../domain/dates.js";
 import { isOpen, isVerified, needsVerification } from "../domain/days.js";
@@ -34,8 +34,7 @@ import { data, ui } from "./store.js";
  * @property {number} laterUnverified       Unverified days after the coverage date.
  * @property {Day | null} todayDay
  * @property {Day | null} openDay
- * @property {Holiday | null} todayHoliday
- * @property {Map<string, Holiday>} holidayByDate
+ * @property {Day | null} todayHoliday     Today, when it's a company holiday.
  * @property {{ start: string, end: string } | null} usual  Typical clock-in/out.
  * @property {boolean} staleShift          An open shift looks like a forgotten clock-out.
  */
@@ -60,7 +59,6 @@ const initialModel = {
   todayDay: null,
   openDay: null,
   todayHoliday: null,
-  holidayByDate: new Map(),
   usual: null,
   staleShift: false,
 };
@@ -68,21 +66,20 @@ const initialModel = {
 export const model = state(initialModel);
 
 effect(() => {
-  const { days, holidays, settings, loaded } = data;
+  const { days, settings, loaded } = data;
   const { today, monthSel, verifiedOnly } = ui;
 
   if (!loaded) return;
 
-  const stats = monthlyStats(days, holidays, settings, today);
+  const coverage = timesheetCoverage(today, settings.releaseDay);
+
+  const stats = monthlyStats(days, settings, today);
 
   // History's "Verified only" view mirrors the official dashboard: verified
   // days (WFH/OOO/Sick count as verified) up to the date the latest
   // timesheet covers, with presence counted only up to that date.
-  const coverage = timesheetCoverage(today, settings.releaseDay);
-
   const verifiedStats = monthlyStats(
     days.filter((d) => d.date <= coverage && isVerified(d)),
-    holidays,
     settings,
     coverage,
   );
@@ -93,13 +90,13 @@ effect(() => {
   const currentStat = stats.find((s) => s.key === currentKey) ?? null;
   const monthKeys = [...new Set([...stats.map((s) => s.key), currentKey])].sort().reverse();
   const selKey = monthSel && monthKeys.includes(monthSel) ? monthSel : currentKey;
-  const autoLeftDates = workdaysLeftDates(currentKey, days, holidays, settings, today);
+  const autoLeftDates = workdaysLeftDates(currentKey, days, settings, today);
   const autoLeft = autoLeftDates.length;
   const override = settings.workdaysOverride;
   const left = override?.key === currentKey ? override.value : autoLeft;
   const unverified = days.filter((d) => d.date <= today && needsVerification(d));
+  const todayDay = days.find((d) => d.date === today) ?? null;
   const toVerify = unverified.filter((d) => d.date <= coverage).reverse();
-  const holidayByDate = new Map(holidays.map((h) => [h.date, h]));
 
   batch(() => {
     Object.assign(model, {
@@ -118,10 +115,9 @@ effect(() => {
       coverage,
       toVerify,
       laterUnverified: unverified.length - toVerify.length,
-      todayDay: days.find((d) => d.date === today) ?? null,
+      todayDay,
       openDay: days.find(isOpen) ?? null,
-      todayHoliday: holidayByDate.get(today) ?? null,
-      holidayByDate,
+      todayHoliday: todayDay?.status === "holiday" ? todayDay : null,
       usual: usualTimes(days),
     });
   });

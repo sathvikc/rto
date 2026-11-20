@@ -75,17 +75,3 @@ export const trusted = (markup) => new SafeHtml(markup);
 export function render(el, content) {
   el.innerHTML = content.value;
 }
-
-/**
- * Segmented-control buttons wired to the action registry.
- * @param {ReadonlyArray<readonly [string, string]>} options  [value, label]
- * @param {string} active
- * @param {string} action
- */
-export const segmentButtons = (options, active, action) =>
-  options.map(
-    ([value, label]) =>
-      html`<button type="button" class="seg__btn" aria-pressed="${String(value === active)}" data-action="${action}" data-value="${value}">
-        ${label}
-      </button>`,
-  );

@@ -4,12 +4,12 @@
 export const STEP_MINUTES = 15;
 
 /** @type {readonly DayStatus[]} */
-export const STATUSES = Object.freeze(["office", "wfh", "ooo", "sick"]);
+export const STATUSES = Object.freeze(["office", "wfh", "ooo", "sick", "holiday"]);
 
 /** @type {Readonly<Record<DayStatus, string>>} */
-export const STATUS_LABEL = Object.freeze({ office: "Office", wfh: "WFH", ooo: "OOO", sick: "Sick" });
+export const STATUS_LABEL = Object.freeze({ office: "Office", wfh: "WFH", ooo: "OOO", sick: "Sick", holiday: "Holiday" });
 
-export const WEDNESDAY = 3;
+const WEDNESDAY = 3;
 
 /** @type {Settings} */
 const defaultSettings = {

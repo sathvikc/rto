@@ -1,19 +1,20 @@
 /**
  * Application state and every write to it.
  *
- *   data - the persisted document: days, holidays, settings
+ *   data - the persisted document: days (holidays included) and settings
  *   ui   - session state: clock, selections, toast
  *
  * Lume tracks top-level keys only, so arrays and objects are always
  * replaced, never mutated in place.
  */
-/** @import { Day, DayStatus, Entry, Holiday, Settings } from "../domain/types.js" */
+/** @import { Day, DayStatus, Entry, Settings } from "../domain/types.js" */
 /** @import { PersistState, SaveTarget } from "./persistence.js" */
 import { batch, effect, state } from "lume-js";
 import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js";
 import { toDateKey } from "../domain/dates.js";
 import { EMPTY_ENTRY, isOpen, predictEntry, unmatchDay, unverifyFuture } from "../domain/days.js";
 import { buildBackup, mergeDays, parseImport } from "../domain/backup.js";
+import { copyHolidays, holidaysAsDays, placeHoliday } from "../domain/holidays.js";
 import { fromMinutes, round2, timeOf, toMinutes } from "../domain/time.js";
 import { deleteDocument, loadDocument, requestPersistence, saveDocument } from "./persistence.js";
 import { formatTime } from "../lib/format.js";
@@ -26,7 +27,6 @@ const TOAST_WITH_ACTIONS_MS = 6000;
  * @typedef {object} DataState
  * @property {boolean} loaded
  * @property {Day[]} days  Newest first.
- * @property {Holiday[]} holidays
  * @property {Settings} settings
  * @property {string | null} lastExportAt
  * @property {string | null} createdAt
@@ -38,7 +38,6 @@ const TOAST_WITH_ACTIONS_MS = 6000;
 const initialData = {
   loaded: false,
   days: [],
-  holidays: [],
   settings: { ...DEFAULT_SETTINGS },
   lastExportAt: null,
   createdAt: null,
@@ -111,7 +110,6 @@ effect(() => {
   pendingDoc = {
     app: "rto",
     days: data.days,
-    holidays: data.holidays,
     settings: data.settings,
     lastExportAt: data.lastExportAt,
     createdAt: data.createdAt,
@@ -139,7 +137,6 @@ export async function loadState() {
   const meta = /** @type {{ lastExportAt?: unknown, createdAt?: unknown } | null} */ (doc);
 
   data.days = newestFirst((parsed?.days ?? []).map((d) => unverifyFuture(d, toDateKey(new Date()))));
-  data.holidays = parsed?.holidays ?? [];
   data.settings = { ...DEFAULT_SETTINGS, ...(parsed?.settings ?? {}) };
   data.lastExportAt = typeof meta?.lastExportAt === "string" ? meta.lastExportAt : null;
   data.createdAt = typeof meta?.createdAt === "string" ? meta.createdAt : new Date().toISOString();
@@ -184,7 +181,7 @@ export function dismissToast() {
 /** @param {string} date */
 export const findDay = (date) => data.days.find((d) => d.date === date) ?? null;
 
-export const findOpenDay = () => data.days.find(isOpen) ?? null;
+const findOpenDay = () => data.days.find(isOpen) ?? null;
 
 /**
  * Insert or replace a day. `replaceDate` removes the old record when an
@@ -203,9 +200,31 @@ export function saveDay(day, replaceDate = null) {
     updatedAt: new Date().toISOString(),
   };
 
+  if (clean.status === "holiday" && day.observedFrom && day.observedFrom !== clean.date) clean.observedFrom = day.observedFrom;
+
   const rest = data.days.filter((d) => d.date !== clean.date && d.date !== replaceDate);
 
   data.days = newestFirst([...rest, clean]);
+}
+
+/**
+ * Merge days into the store (same date replaced), stamped as updated now.
+ * @param {Day[]} incoming
+ * @returns {{ added: number, replaced: number }}
+ */
+function mergeIntoDays(incoming) {
+  if (!incoming.length) return { added: 0, replaced: 0 };
+
+  const at = new Date().toISOString();
+
+  const merged = mergeDays(
+    data.days,
+    incoming.map((d) => ({ ...d, updatedAt: at })),
+  );
+
+  data.days = merged.days;
+
+  return { added: merged.added, replaced: merged.replaced };
 }
 
 /** @param {string} date */
@@ -409,9 +428,78 @@ export function updateSettings(patch) {
   data.settings = { ...data.settings, ...patch };
 }
 
-/** @param {Holiday[]} list */
-export function setHolidays(list) {
-  data.holidays = list;
+// ---------------------------------------------------------------- holidays
+
+/**
+ * Add a company holiday. A weekend date is observed on the nearest weekday.
+ * @param {string} date  The real date.
+ * @param {string} name
+ * @returns {{ error: string | null, observed: string | null }}  `observed` is the day it lands on.
+ */
+export function addHoliday(date, name) {
+  const placed = placeHoliday(data.days, date, name);
+
+  if (!placed.day) return { error: placed.error, observed: null };
+
+  saveDay(placed.day);
+
+  return { error: null, observed: placed.day.date };
+}
+
+/**
+ * Change a holiday's real date or name.
+ * @param {string} recordDate  The date the holiday is stored on (observed).
+ * @param {{ date?: string, name?: string }} change
+ * @returns {string | null} error message
+ */
+export function updateHoliday(recordDate, change) {
+  const day = findDay(recordDate);
+
+  if (day?.status !== "holiday") return "That holiday no longer exists.";
+
+  const name = change.name ?? day.note ?? "";
+
+  if (!change.date) {
+    saveDay({ ...day, note: name.trim() || null });
+
+    return null;
+  }
+
+  const placed = placeHoliday(data.days, change.date, name, recordDate);
+
+  if (!placed.day) return placed.error;
+
+  saveDay(placed.day, recordDate);
+
+  return null;
+}
+
+/**
+ * Add several holidays at once (e.g. the US federal list). Dates you
+ * already logged keep your record.
+ * @param {import("../domain/types.js").Holiday[]} holidays
+ * @returns {number} how many were added
+ */
+export function addHolidays(holidays) {
+  const { days, added } = holidaysAsDays(data.days, holidays);
+
+  if (added) mergeIntoDays(days.filter((d) => !d.updatedAt));
+
+  return added;
+}
+
+/**
+ * Copy one year's holidays to another (same month/day and names).
+ * @param {string} fromYear
+ * @param {string} toYear
+ * @returns {number} how many were added
+ */
+export function copyHolidaysToYear(fromYear, toYear) {
+  const added = copyHolidays(data.days, fromYear, toYear);
+
+  mergeIntoDays(added);
+
+  return added.length;
 }
 
 // ---------------------------------------------------------------- backup
@@ -440,32 +528,20 @@ export function importBackup(json) {
 
   const imp = parseImport(parsed);
 
-  if (!imp.days.length && !imp.holidays.length) throw new Error("No days found in that file.");
+  if (!imp.days.length) throw new Error("No days found in that file.");
 
   // The file wins: its days replace local days with the same date.
-  const at = new Date().toISOString();
   const today = toDateKey(new Date());
-  const incoming = imp.days.map((d) => unverifyFuture({ ...d, updatedAt: at }, today));
-  const merged = mergeDays(data.days, incoming);
-
-  data.days = merged.days;
-
-  if (imp.holidays.length) {
-    const holidays = new Map(data.holidays.map((h) => [h.date, h]));
-
-    for (const h of imp.holidays) holidays.set(h.date, h);
-    data.holidays = [...holidays.values()].sort((a, b) => a.date.localeCompare(b.date));
-  }
+  const merged = mergeIntoDays(imp.days.map((d) => unverifyFuture(d, today)));
 
   updateSettings(imp.settings);
 
-  return { added: merged.added, replaced: merged.replaced, holidays: imp.holidays.length, skipped: imp.skipped };
+  return { added: merged.added, replaced: merged.replaced, holidays: imp.holidays, skipped: imp.skipped };
 }
 
 export async function eraseEverything() {
   await deleteDocument();
   data.days = [];
-  data.holidays = [];
   data.settings = { ...DEFAULT_SETTINGS };
   data.lastExportAt = null;
   await flush();

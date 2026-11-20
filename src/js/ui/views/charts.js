@@ -7,7 +7,10 @@ import { model } from "../../state/model.js";
 import { ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { barChart } from "../components/bar-chart.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { chartCard } from "../components/chart-card.js";
+import { emptyState } from "../components/empty-state.js";
+import { byId, html, render } from "../dom.js";
 
 /** @import { MonthStat } from "../../domain/types.js" */
 /** @import { ChartGroup } from "../../state/store.js" */
@@ -62,35 +65,35 @@ export function mountCharts() {
       const { historyStats: stats, selKey, currentKey } = model;
       const mode = ui.chartGroup;
 
-      render(toggle, html`${segmentButtons(GROUP_OPTIONS, mode, "chart-group")}`);
+      render(toggle, segmentButtons(GROUP_OPTIONS, mode, "chart-group"));
 
       const year = (selKey || currentKey).slice(0, 4);
       const points = mode === "year" ? byYear(stats) : byMonth(stats, year);
       const scope = mode === "year" ? "by year" : `by month · ${year}`;
 
       if (!points.length) {
-        render(root, html`<div class="card empty">Charts appear once you log a few days.</div>`);
+        render(root, emptyState({ text: "Charts appear once you log a few days." }));
 
         return;
       }
 
       render(
         root,
-        html`<figure class="card chart-card">
-            <figcaption class="chart-card__title">Average hours ${scope}</figcaption>
-            ${barChart(
-              points.map((p) => ({ label: p.label, value: p.avg, text: p.avg === null ? "" : p.avg.toFixed(1), faded: p.partial })),
-              { color: "var(--color-accent)", label: `Average hours ${scope}` },
-            )}
-          </figure>
-          <figure class="card chart-card">
-            <figcaption class="chart-card__title">Presence ${scope}</figcaption>
-            ${barChart(
-              points.map((p) => ({ label: p.label, value: p.pct, text: p.pct === null ? "" : `${p.pct}%`, faded: p.partial })),
-              { max: 112, color: "var(--color-info)", label: `Presence percent ${scope}` },
-            )}
-            <p class="text-dim text-small">Faded bar = month in progress.</p>
-          </figure>`,
+        html`${chartCard(
+          `Average hours ${scope}`,
+          barChart(
+            points.map((p) => ({ label: p.label, value: p.avg, text: p.avg === null ? "" : p.avg.toFixed(1), faded: p.partial })),
+            { color: "var(--color-accent)", label: `Average hours ${scope}` },
+          ),
+        )}
+        ${chartCard(
+          `Presence ${scope}`,
+          barChart(
+            points.map((p) => ({ label: p.label, value: p.pct, text: p.pct === null ? "" : `${p.pct}%`, faded: p.partial })),
+            { max: 112, color: "var(--color-info)", label: `Presence percent ${scope}` },
+          ),
+          "Faded bar = month in progress.",
+        )}`,
       );
     }),
   );

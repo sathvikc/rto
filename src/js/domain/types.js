@@ -1,7 +1,7 @@
 /**
  * Shared JSDoc types. This module exports nothing at runtime.
  *
- * @typedef {"office" | "wfh" | "ooo" | "sick"} DayStatus
+ * @typedef {"office" | "wfh" | "ooo" | "sick" | "holiday"} DayStatus  "holiday" = company holiday; its name is the note.
  *
  * @typedef {object} Entry
  *   One set of numbers for a day. Times are 24-hour "HH:MM".
@@ -15,10 +15,11 @@
  * @property {DayStatus} status
  * @property {Entry | null} recorded   Your own punch or entry, raw.
  * @property {Entry | null} actual     The official timesheet. Present = verified.
- * @property {string | null} note
+ * @property {string | null} note     For a Holiday: its name.
+ * @property {string} [observedFrom]   Holiday only: the real date, when it falls on a weekend and is observed on this weekday.
  * @property {string} [updatedAt]      ISO timestamp.
  *
- * @typedef {object} Holiday
+ * @typedef {object} Holiday  Older backups listed holidays separately; they're converted to Holiday days.
  * @property {string} date
  * @property {string} name
  *
@@ -68,7 +69,6 @@
  * @property {"rto"} app
  * @property {number} version
  * @property {Day[]} days
- * @property {Holiday[]} holidays
  * @property {Settings} settings
  * @property {string | null} [createdAt]
  * @property {string | null} [lastExportAt]

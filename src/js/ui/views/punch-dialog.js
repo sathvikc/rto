@@ -13,6 +13,7 @@ import { model } from "../../state/model.js";
 import { clockIn, clockOut, data, findDay, flush, setEndTime, setStartTime } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { closeDialogs, openDialog } from "../dialogs.js";
+import { actionButton } from "../components/button.js";
 import { byId, html, render } from "../dom.js";
 
 /**
@@ -49,10 +50,8 @@ export function mountPunchDialog() {
 
   render(
     nudges,
-    html`${NUDGES.map(
-        (n) =>
-          html`<button type="button" class="chip" data-action="punch-nudge" data-value="${n}">${n > 0 ? `+${n}` : `−${-n}`} min</button>`,
-      )} <button type="button" class="chip" data-action="punch-now">Now</button>`,
+    html`${NUDGES.map((n) => actionButton(`${n > 0 ? `+${n}` : `−${-n}`} min`, "punch-nudge", { className: "chip", value: n }))}
+    ${actionButton("Now", "punch-now", { className: "chip" })}`,
   );
 
   // Preview what the timesheet will show for the chosen time.

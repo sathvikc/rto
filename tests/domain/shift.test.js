@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { isStaleShift, leaveMinuteFor, leavePlan, nextRoundingStep, usualTimes } from "../../src/js/domain/shift.js";
+import {
+  isStaleShift,
+  leaveMinuteFor,
+  leavePlan,
+  leaveRows,
+  nextRoundingStep,
+  projectedAverage,
+  usualTimes,
+} from "../../src/js/domain/shift.js";
 import { toMinutes } from "../../src/js/domain/time.js";
 import { office } from "../helpers.js";
 
@@ -72,5 +80,65 @@ describe("usualTimes", () => {
 
   test("needs at least three days", () => {
     assert.equal(usualTimes([office("2026-11-20", "08:57", "16:18")]), null);
+  });
+});
+
+describe("leaveRows", () => {
+  const stat = { total: 80, counted: 10 }; // month average 8.0 so far
+
+  test("now, on pace and a full day, with the month average for each (no other days left)", () => {
+    // In 8:57 -> 8:45 on the timesheet. Now 13:17 -> 13:15 = 4.5h.
+    const { rows, next } = leaveRows("08:57", toMinutes("13:17"), settings, { stat, paceHours: 7.6, targetHours: 8 });
+
+    assert.deepEqual(
+      rows.map((r) => [r.kinds.join("+"), r.at, r.out, r.hours, Math.round(r.average * 100) / 100]),
+      [
+        ["now", "13:17", "13:15", 4.5, 7.68],
+        ["pace", "16:20", "16:30", 7.75, 7.98],
+        ["target", "16:35", "16:45", 8, 8],
+      ],
+    );
+
+    assert.deepEqual(next, { at: "13:20", out: "13:30", hours: 4.75 });
+  });
+
+  test("month-end view: on pace lands on target, shorter below, a full day above", () => {
+    // 10 days so far averaging 8.4h; 5 office days left incl. today. Pace = (8*15 - 84) / 5 = 7.2h.
+    const ahead = { total: 84, counted: 10 };
+    const { rows } = leaveRows("09:00", toMinutes("13:00"), settings, { stat: ahead, paceHours: 7.2, targetHours: 8, restDays: 4 });
+
+    /** @param {number} n */
+    const round = (n) => Math.round(n * 100) / 100;
+
+    assert.deepEqual(
+      rows.map((r) => [r.kinds.join("+"), r.hours, round(r.average)]),
+      [
+        ["now", 4, 7.79],
+        ["pace", 7.25, 8],
+        ["target", 8, 8.05],
+      ],
+    );
+  });
+
+  test("goals already met are dropped; same-minute goals merge", () => {
+    const late = leaveRows("08:00", toMinutes("17:00"), settings, { stat, paceHours: 7.6, targetHours: 8 });
+
+    assert.deepEqual(
+      late.rows.map((r) => r.kinds),
+      [["now"]],
+    );
+
+    const same = leaveRows("09:00", toMinutes("12:00"), settings, { stat: null, paceHours: 8, targetHours: 8 });
+
+    assert.deepEqual(
+      same.rows.map((r) => r.kinds),
+      [["now"], ["pace", "target"]],
+    );
+  });
+
+  test("projectedAverage adds today and the remaining days", () => {
+    assert.equal(projectedAverage({ total: 70, counted: 9 }, 10), 8);
+    assert.equal(projectedAverage(null, 7.5), 7.5);
+    assert.equal(projectedAverage({ total: 80, counted: 10 }, 8, 4, 8), 8);
   });
 });

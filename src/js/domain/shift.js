@@ -1,11 +1,11 @@
-/** @import { Day, Settings } from "./types.js" */
+/** @import { Day, MonthStat, Settings } from "./types.js" */
 import { STEP_MINUTES } from "./constants.js";
 import { isOpen } from "./days.js";
 import { graceOf, roundMinutes } from "./rounding.js";
 import { fromMinutes, isTime, spanHours, toMinutes } from "./time.js";
 
 /** Open shifts older than this are treated as a forgotten clock-out. */
-export const STALE_SHIFT_HOURS = 14;
+const STALE_SHIFT_HOURS = 14;
 
 const MINUTES_PER_DAY = 1440;
 
@@ -152,4 +152,86 @@ export function usualTimes(days, sample = 20) {
   };
 
   return { start: median(starts), end: median(ends) };
+}
+
+/**
+ * Where the month ends if today ends with `hours` and each of the other
+ * `restDays` remaining office days comes in at `restHours`. With no rest
+ * days this is simply the average including today. (Today isn't in the
+ * stats yet while you're on the clock.)
+ * @param {Pick<MonthStat, "total" | "counted"> | null} stat
+ * @param {number} hours       Today.
+ * @param {number} [restDays]
+ * @param {number} [restHours]
+ */
+export function projectedAverage(stat, hours, restDays = 0, restHours = 0) {
+  const total = (stat?.total ?? 0) + hours + restDays * restHours;
+
+  return total / ((stat?.counted ?? 0) + 1 + restDays);
+}
+
+/**
+ * @typedef {"now" | "pace" | "target"} LeaveKind
+ *
+ * @typedef {object} LeaveRow
+ * @property {LeaveKind[]} kinds  Why this row is shown (merged when two land on the same minute).
+ * @property {string} at          Leave at, "HH:MM".
+ * @property {string} out         Timesheet clock-out.
+ * @property {number} hours       Timesheet hours for today.
+ * @property {number} average     Projected month-end average if you leave then.
+ */
+
+/**
+ * Leave options for the panel: now, the earliest exit that keeps the month
+ * on pace (`paceHours`), and the earliest that makes a full `targetHours`
+ * day. Rows for goals already met are dropped; rows on the same minute are
+ * merged. Sorted by time.
+ * @param {string} start  Clock-in, "HH:MM".
+ * @param {number} nowMinutes  May exceed 1440 for a shift that crossed midnight.
+ * @param {Settings} settings
+ * Each row's average is the projected month end: today at that row's
+ * hours, and the other `restDays` office days at the on-pace hours (or at
+ * the target when you're already ahead). So "on pace" lands on the target,
+ * a shorter day below it, a longer day above it.
+ * @param {{ stat: Pick<MonthStat, "total" | "counted"> | null, paceHours: number | null, targetHours: number, restDays?: number }} goals
+ * @returns {{ rows: LeaveRow[], next: LeaveOption | null }}
+ */
+export function leaveRows(start, nowMinutes, settings, { stat, paceHours, targetHours, restDays = 0 }) {
+  if (!isTime(start)) return { rows: [], next: null };
+
+  const now = optionAt(start, nowMinutes, settings);
+
+  /** @type {Array<{ kind: LeaveKind, option: LeaveOption }>} */
+  const picks = [{ kind: "now", option: now }];
+
+  for (const [kind, hours] of /** @type {const} */ ([
+    ["pace", paceHours],
+    ["target", targetHours],
+  ])) {
+    if (hours === null || hours <= now.hours) continue;
+
+    const minute = leaveMinuteFor(start, hours, settings, nowMinutes);
+
+    if (minute !== null) picks.push({ kind, option: optionAt(start, minute, settings) });
+  }
+
+  const restHours = paceHours !== null && paceHours > 0 ? paceHours : targetHours;
+
+  /** @type {Map<string, LeaveRow>} */
+  const byTime = new Map();
+
+  for (const { kind, option } of picks) {
+    const existing = byTime.get(option.at);
+
+    if (existing) existing.kinds.push(kind);
+    else byTime.set(option.at, { kinds: [kind], ...option, average: projectedAverage(stat, option.hours, restDays, restHours) });
+  }
+
+  const nextMinute = nextRoundingStep(nowMinutes, settings);
+  const next = nextMinute === null ? null : optionAt(start, nextMinute, settings);
+
+  return {
+    rows: [...byTime.values()].sort((a, b) => toMinutes(a.at) - toMinutes(b.at)),
+    next: next && next.out !== now.out ? next : null,
+  };
 }

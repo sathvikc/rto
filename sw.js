@@ -11,7 +11,7 @@
  *
  * Bump CACHE_NAME on every release that changes shipped files.
  */
-const CACHE_NAME = "rto-v6";
+const CACHE_NAME = "rto-v9";
 
 const APP_SHELL = [
   "./",
@@ -32,6 +32,7 @@ const APP_SHELL = [
   "src/js/domain/backup.js",
   "src/js/domain/constants.js",
   "src/js/domain/dates.js",
+  "src/js/domain/holidays.js",
   "src/js/domain/days.js",
   "src/js/domain/rounding.js",
   "src/js/domain/shift.js",
@@ -46,10 +47,21 @@ const APP_SHELL = [
   "src/js/ui/actions.js",
   "src/js/ui/dialogs.js",
   "src/js/ui/dom.js",
+  "src/js/ui/elements.js",
   "src/js/ui/tabs.js",
   "src/js/ui/theme.js",
   "src/js/ui/updates.js",
+  "src/js/ui/components/badge.js",
+  "src/js/ui/components/banner.js",
   "src/js/ui/components/bar-chart.js",
+  "src/js/ui/components/button.js",
+  "src/js/ui/components/chart-card.js",
+  "src/js/ui/components/empty-state.js",
+  "src/js/ui/components/icon.js",
+  "src/js/ui/components/segmented.js",
+  "src/js/ui/components/select-options.js",
+  "src/js/ui/components/star.js",
+  "src/js/ui/components/stat-grid.js",
   "src/js/ui/views/alerts.js",
   "src/js/ui/views/charts.js",
   "src/js/ui/views/day-dialog.js",

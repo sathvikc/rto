@@ -9,9 +9,15 @@ import { formatDay, formatHours, formatTime, monthName, plural } from "../../lib
 import { model } from "../../state/model.js";
 import { data, toggleMatch, ui, verifyAsPredicted } from "../../state/store.js";
 import { registerActions } from "../actions.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { actionButton, DAY_BUTTON, editDayButton } from "../components/button.js";
+import { badge } from "../components/badge.js";
+import { emptyState } from "../components/empty-state.js";
+import { selectOptions } from "../components/select-options.js";
+import { unverifiedMark } from "../components/star.js";
+import { byId, html, render } from "../dom.js";
 
-/** @import { Day, Holiday, Settings } from "../../domain/types.js" */
+/** @import { Day, Settings } from "../../domain/types.js" */
 /** @import { HistoryFilter } from "../../state/store.js" */
 /** @import { SafeHtml } from "../dom.js" */
 
@@ -25,10 +31,9 @@ const FILTER_OPTIONS = /** @type {const} */ ([
  * @param {Day} day
  * @param {Settings} settings
  * @param {string} today
- * @param {Holiday | undefined} holiday
  * @returns {SafeHtml}
  */
-function dayCard(day, settings, today, holiday) {
+function dayCard(day, settings, today) {
   const r = resolveDay(day, settings);
   const { recorded: rec, actual: act } = day;
   const isPast = day.date <= today;
@@ -43,7 +48,9 @@ function dayCard(day, settings, today, holiday) {
         ? r.total === null
           ? "No hours"
           : "No times"
-        : STATUS_LABEL[day.status];
+        : day.status === "holiday"
+          ? (day.note ?? "Company holiday")
+          : STATUS_LABEL[day.status];
 
   /** @type {Array<SafeHtml | string>} */
   const details = [];
@@ -69,42 +76,38 @@ function dayCard(day, settings, today, holiday) {
     details.push("Not verified");
   }
 
+  if (day.status === "holiday" && day.observedFrom) details.push(`Observed for ${formatDay(day.observedFrom, { year: false })}`);
+
   if (r.pto !== null) details.push(`PTO ${formatHours(r.pto)}${r.work !== null ? ` · worked ${formatHours(r.work)}` : ""}`);
 
-  const star = unverified ? html`<sup class="star" title="Not verified">*</sup>` : "";
+  const star = unverified && unverifiedMark();
 
   return html` <div class="cluster cluster--between cluster--top">
       <h3 class="day-card__date">${formatDay(day.date)}</h3>
       <div class="day-card__badges">
-        ${day.date === today && html`<span class="badge">Today</span>`}
-        ${day.status !== "office" && html`<span class="badge badge--${day.status}">${STATUS_LABEL[day.status]}</span>`}
-        ${holiday && html`<span class="badge badge--holiday">${holiday.name || "Holiday"}</span>`}
-        ${r.open && html`<span class="badge badge--open">In progress</span>`}
+        ${day.date === today && badge("Today")} ${day.status !== "office" && badge(STATUS_LABEL[day.status], day.status)}
+        ${r.open && badge("In progress", "open")}
       </div>
     </div>
     <div class="cluster cluster--between cluster--baseline">
       <p class="day-card__times">${timeLine}</p>
       ${r.total !== null ? html`<span class="day-card__hours">${formatHours(r.total)}${star}</span>` : star}
     </div>
-    ${details.map((d) => html`<p class="text-dim text-small">${d}</p>`)}
-    ${day.note && html`<p class="day-card__note text-small">${day.note}</p>`}
+    ${details.map((d) => html`<p class="caption">${d}</p>`)}
+    ${day.note && day.status !== "holiday" && html`<p class="day-card__note text-small">${day.note}</p>`}
     <div class="cluster day-card__actions">
-      <button type="button" class="btn btn--pill btn--small" data-action="edit-day" data-date="${day.date}">Edit</button>
+      ${editDayButton(day.date)}
       ${
         isPast &&
         canToggleMatch(day) &&
-        html`<button
-          type="button"
-          class="btn btn--pill btn--small btn--toggle"
-          aria-pressed="${String(r.verified)}"
-          data-action="toggle-match"
-          data-date="${day.date}"
-          title="${r.verified ? "Matches the timesheet. Tap to undo." : "Mark as matching the timesheet"}"
-        >
-          ${r.verified ? "✓ Matched" : "Matches?"}
-        </button>`
+        actionButton(r.verified ? "✓ Matched" : "Matches?", "toggle-match", {
+          className: `${DAY_BUTTON} btn--toggle`,
+          date: day.date,
+          pressed: r.verified,
+          title: r.verified ? "Matches the timesheet. Tap to undo." : "Mark as matching the timesheet",
+        })
       }
-      <button type="button" class="btn btn--pill btn--small text-danger" data-action="ask-delete" data-date="${day.date}">Delete</button>
+      ${actionButton("Delete", "ask-delete", { className: `${DAY_BUTTON} text-danger`, date: day.date })}
     </div>`;
 }
 
@@ -124,9 +127,9 @@ export function mountHistory() {
     effect(() => {
       const { days, settings } = data;
       const { filter, yearSel, today } = ui;
-      const { selKey, holidayByDate } = model;
+      const { selKey } = model;
 
-      render(filterEl, html`${segmentButtons(FILTER_OPTIONS, filter, "history-filter")}`);
+      render(filterEl, segmentButtons(FILTER_OPTIONS, filter, "history-filter"));
 
       const years = [...new Set(days.map((d) => d.date.slice(0, 4)))].sort().reverse();
       const fallbackYear = (selKey || today).slice(0, 4);
@@ -134,11 +137,7 @@ export function mountHistory() {
       const year =
         yearSel === "all" || (yearSel && years.includes(yearSel)) ? yearSel : years.includes(fallbackYear) ? fallbackYear : "all";
 
-      render(
-        yearSelect,
-        html`<option value="all">All years</option>
-          ${years.map((y) => html`<option value="${y}">${y}</option>`)}`,
-      );
+      render(yearSelect, selectOptions([["all", "All years"], ...years.map((y) => /** @type {const} */ ([y, y]))]));
 
       yearSelect.value = year;
       yearFilter.hidden = filter !== "all";
@@ -173,9 +172,14 @@ export function mountHistory() {
           caption.textContent = `${caption.textContent} · ${plural(hidden, "day")} hidden (unverified or after ${formatDay(coverage, { year: false })})`;
       }
 
-      list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today, holidayByDate.get(d.date)) }));
-      empty.hidden = rows.length > 0;
-      empty.textContent = days.length ? "No days in this range." : "Nothing here yet. Clock in, or add a day with Manual entry.";
+      list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today) }));
+
+      render(
+        empty,
+        rows.length
+          ? html``
+          : emptyState({ text: days.length ? "No days in this range." : "Nothing here yet. Clock in, or tap + Add day." }),
+      );
     }),
   );
 

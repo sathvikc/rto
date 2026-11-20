@@ -1,6 +1,7 @@
 /** @import { Backup, Day, DayStatus, Entry, Holiday, RoundingRule, Settings } from "./types.js" */
 import { BACKUP_VERSION, STATUSES } from "./constants.js";
 import { isDateKey, pad2, toDateKey } from "./dates.js";
+import { holidaysAsDays } from "./holidays.js";
 import { isTime, round2 } from "./time.js";
 
 const ROUNDING_MODES = ["down", "up", "nearest", "custom", "none"];
@@ -50,7 +51,12 @@ function ruleFrom(v) {
 function dayFromBackup(raw, date) {
   const status = /** @type {DayStatus} */ (STATUSES.includes(/** @type {DayStatus} */ (raw.status)) ? raw.status : "office");
 
-  return { date, status, recorded: entryFrom(raw.recorded), actual: entryFrom(raw.actual), note: text(raw.note) };
+  /** @type {Day} */
+  const day = { date, status, recorded: entryFrom(raw.recorded), actual: entryFrom(raw.actual), note: text(raw.note) };
+
+  if (status === "holiday" && isDateKey(raw.observedFrom) && raw.observedFrom !== date) day.observedFrom = raw.observedFrom;
+
+  return day;
 }
 
 /**
@@ -88,7 +94,7 @@ function dayFromFlatRow(raw, date) {
 /**
  * @typedef {object} ParsedImport
  * @property {Day[]} days
- * @property {Holiday[]} holidays
+ * @property {number} holidays  Holidays converted from an older backup's list.
  * @property {Partial<Settings>} settings
  * @property {number} skipped  Rows without a valid date.
  */
@@ -105,7 +111,7 @@ export function parseImport(json) {
   if (!rows) throw new Error("No days found in that file.");
 
   /** @type {ParsedImport} */
-  const out = { days: [], holidays: [], settings: {}, skipped: 0 };
+  const out = { days: [], holidays: 0, settings: {}, skipped: 0 };
 
   for (const raw of rows) {
     if (!isObject(raw) || !isDateKey(raw.date)) {
@@ -119,10 +125,16 @@ export function parseImport(json) {
   }
 
   if (isObject(json)) {
+    // Older versions kept holidays as a separate list: turn them into days.
     if (Array.isArray(json.holidays)) {
-      out.holidays = json.holidays
+      const listed = json.holidays
         .filter((h) => isObject(h) && isDateKey(h.date))
         .map((h) => ({ date: /** @type {string} */ (h.date), name: text(h.name) ?? "" }));
+
+      const converted = holidaysAsDays(out.days, listed);
+
+      out.days = converted.days;
+      out.holidays = converted.added;
     }
 
     if (isObject(json.settings)) out.settings = settingsFrom(json.settings);
@@ -167,69 +179,18 @@ function settingsFrom(s) {
 }
 
 /**
- * @param {{ days: Day[], holidays: Holiday[], settings: Settings, createdAt: string | null }} doc
+ * @param {{ days: Day[], settings: Settings, createdAt: string | null }} doc
  * @returns {Backup}
  */
-export function buildBackup({ days, holidays, settings, createdAt }) {
+export function buildBackup({ days, settings, createdAt }) {
   return {
     app: "rto",
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     createdAt,
     settings,
-    holidays,
     days: [...days].sort((a, b) => a.date.localeCompare(b.date)),
   };
-}
-
-/**
- * "2026-11-26 Thanksgiving" per line -> sorted, de-duplicated holidays.
- * @param {string} input
- * @returns {{ list: Holiday[], invalid: number }}
- */
-export function parseHolidays(input) {
-  /** @type {Map<string, string>} */
-  const byDate = new Map();
-  let invalid = 0;
-
-  for (const line of input.split(/\r?\n/)) {
-    const trimmed = line.trim();
-
-    if (!trimmed) continue;
-
-    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})\s*[,\-–:|]?\s*(.*)$/);
-
-    if (!match || !isDateKey(match[1])) {
-      invalid++;
-      continue;
-    }
-
-    byDate.set(match[1], match[2].trim());
-  }
-
-  const list = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, name]) => ({ date, name }));
-
-  return { list, invalid };
-}
-
-/** @param {Holiday[]} list */
-export const holidaysToText = (list) => list.map((h) => (h.name ? `${h.date} ${h.name}` : h.date)).join("\n");
-
-/**
- * Replace one year's holidays with `list`, keeping every other year. Lines
- * dated in another year are merged into that year (same date replaced).
- * @param {Holiday[]} existing
- * @param {string} year "YYYY"
- * @param {Holiday[]} list
- * @returns {Holiday[]} sorted
- */
-export function replaceHolidaysForYear(existing, year, list) {
-  /** @type {Map<string, Holiday>} */
-  const byDate = new Map(existing.filter((h) => !h.date.startsWith(`${year}-`)).map((h) => [h.date, h]));
-
-  for (const h of list) byDate.set(h.date, h);
-
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
