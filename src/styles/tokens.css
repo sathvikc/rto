@@ -27,6 +27,8 @@
     --color-ooo: light-dark(#2f6fae, #7cb4ee);
     --color-sick: light-dark(#b42318, #f97066);
     --color-holiday: light-dark(#a16207, #e4b54a);
+    --color-warn: light-dark(#b42318, #f97066);
+    --color-tabbar: light-dark(rgb(255 253 248 / 0.92), rgb(34 31 26 / 0.92));
     --color-backdrop: rgb(0 0 0 / 0.45);
     --shadow-punch: 0 10px 30px light-dark(rgb(30 125 58 / 0.22), rgb(0 0 0 / 0.45));
     --shadow-toast: 0 8px 24px rgb(0 0 0 / 0.25);
@@ -62,6 +64,7 @@
     /* Size */
     --page-max: 35rem;
     --tap-min: 2.75rem; /* 44px, Apple's minimum touch target */
+    --tabbar-height: 3.5rem;
   }
 
   :root[data-theme="light"] {

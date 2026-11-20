@@ -1,21 +1,23 @@
 /** Entry point: load data, mount views, start the clock, register the service worker. */
-import { batch, bindDom } from "lume-js";
+import { batch } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
-import { show } from "lume-js/handlers";
 import { toDateKey } from "./domain/dates.js";
-import { flush, loadState, ui } from "./state/store.js";
 import "./state/model.js";
+import { flush, loadState, ui } from "./state/store.js";
 import { listenForActions } from "./ui/actions.js";
 import { setUpDialogs } from "./ui/dialogs.js";
-import { byId } from "./ui/dom.js";
+import { setUpTabs } from "./ui/tabs.js";
 import { setUpTheme } from "./ui/theme.js";
 import { mountAlerts } from "./ui/views/alerts.js";
 import { mountCharts } from "./ui/views/charts.js";
 import { mountDayDialog } from "./ui/views/day-dialog.js";
 import { mountHistory } from "./ui/views/history.js";
+import { mountMonthCard } from "./ui/views/month-card.js";
+import { mountMonthSummary } from "./ui/views/month-summary.js";
 import { mountNow } from "./ui/views/now.js";
-import { mountSettingsDialog } from "./ui/views/settings-dialog.js";
-import { mountSummary } from "./ui/views/summary.js";
+import { mountPunchDialog } from "./ui/views/punch-dialog.js";
+import { mountSettings } from "./ui/views/settings.js";
+import { mountToast } from "./ui/views/toast.js";
 import { mountVerifyDialog } from "./ui/views/verify-dialog.js";
 
 const TICK_MS = 1000;
@@ -43,18 +45,30 @@ async function start() {
   app.add(setUpTheme());
   app.add(setUpDialogs());
   app.add(listenForActions());
+  app.add(setUpTabs());
+
+  // Home
   app.add(mountNow());
   app.add(mountAlerts());
-  app.add(mountSummary());
+  app.add(mountMonthCard());
+
+  // History
+  app.add(mountMonthSummary());
   app.add(mountCharts());
   app.add(mountHistory());
+
+  // Settings
+  app.add(mountSettings());
+
+  // Sheets and feedback
+  app.add(mountPunchDialog());
   app.add(mountDayDialog());
   app.add(mountVerifyDialog());
-  app.add(mountSettingsDialog());
-  app.add(bindDom(byId("toast-region"), ui, { handlers: [show] }));
+  app.add(mountToast());
 
   await loadState();
   tick();
+
   const timer = setInterval(tick, TICK_MS);
 
   app.add(() => clearInterval(timer));

@@ -1,4 +1,4 @@
-/** Settings sheet: theme, grouping, rounding, holidays, rounding check, backup. */
+/** Settings tab: theme, target, grouping, rounding, holidays, rounding check, backup. */
 import { batch, bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { holidaysToText, parseHolidays } from "../../domain/backup.js";
@@ -20,7 +20,7 @@ import {
 } from "../../state/store.js";
 import { APP_VERSION } from "../../version.js";
 import { registerActions } from "../actions.js";
-import { closeDialogs, openDialog } from "../dialogs.js";
+
 import { byId, html, render, segmentButtons } from "../dom.js";
 import { theme } from "../theme.js";
 
@@ -95,9 +95,10 @@ function fitLine(fit, side) {
   </li>`;
 }
 
-export function mountSettingsDialog() {
+export function mountSettings() {
   const group = createCleanupGroup();
-  const dialog = byId("settings-dialog", HTMLDialogElement);
+  const page = byId("tab-settings");
+  const target = byId("target-input", HTMLInputElement);
   const importInput = byId("import-file", HTMLInputElement);
 
   const view = state({
@@ -191,6 +192,50 @@ export function mountSettingsDialog() {
     }),
   );
 
+  // Refresh the holiday editor whenever the tab opens.
+  group.add(
+    effect(() => {
+      if (ui.tab !== "settings") return;
+
+      batch(() => {
+        view.holidayText = holidaysToText(data.holidays);
+        view.holidayMessage = "";
+      });
+    }),
+  );
+
+  group.add(
+    effect(() => {
+      const value = String(data.settings.target);
+
+      if (document.activeElement !== target) target.value = value;
+    }),
+  );
+
+  const commitTarget = () => {
+    const value = Number(target.value.trim());
+
+    if (Number.isFinite(value) && value > 0 && value <= 24) {
+      updateSettings({ target: value });
+      toast(`Target set to ${value}h`);
+    } else {
+      target.value = String(data.settings.target);
+    }
+  };
+
+  /** @param {KeyboardEvent} event */
+  const blurOnEnter = (event) => {
+    if (event.key === "Enter") target.blur();
+  };
+
+  target.addEventListener("change", commitTarget);
+  target.addEventListener("keydown", blurOnEnter);
+
+  group.add(() => {
+    target.removeEventListener("change", commitTarget);
+    target.removeEventListener("keydown", blurOnEnter);
+  });
+
   async function exportBackup() {
     const name = `rto-backup-${ui.today}.json`;
     const file = new File([backupJson()], name, { type: "application/json" });
@@ -256,22 +301,14 @@ export function mountSettingsDialog() {
   };
 
   importInput.addEventListener("change", onImport);
-  dialog.addEventListener("change", onGraceChange);
+  page.addEventListener("change", onGraceChange);
 
   group.add(() => {
     importInput.removeEventListener("change", onImport);
-    dialog.removeEventListener("change", onGraceChange);
+    page.removeEventListener("change", onGraceChange);
   });
 
   registerActions({
-    "open-settings": () => {
-      batch(() => {
-        view.holidayText = holidaysToText(data.holidays);
-        view.holidayMessage = "";
-      });
-
-      openDialog(dialog);
-    },
     theme: (el) => {
       theme.pref = /** @type {ThemePref} */ (el.dataset.value);
     },
@@ -292,12 +329,11 @@ export function mountSettingsDialog() {
       if (!window.confirm("This cannot be undone. Erase everything?")) return;
 
       await eraseEverything();
-      closeDialogs();
       toast("All data erased");
     },
   });
 
-  group.add(bindDom(dialog, view));
+  group.add(bindDom(page, view));
 
   return () => group.dispose();
 }

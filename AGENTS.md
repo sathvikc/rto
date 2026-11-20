@@ -33,8 +33,8 @@ src/js/
   domain/                pure logic: no DOM, no storage, no Lume
   lib/format.js          display formatting (pure)
   state/                 Lume stores, persistence, derived model
-  ui/                    DOM helpers, actions, dialogs, theme
-  ui/views/              one module per screen region or dialog
+  ui/                    DOM helpers, actions, dialogs, tabs, theme
+  ui/views/              one module per screen region or sheet (Home, History, Settings tabs)
   ui/components/         reusable render functions
 src/styles/              CSS split by cascade layer
 tests/                   node:test unit tests

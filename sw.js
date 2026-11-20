@@ -5,7 +5,7 @@
  * launch without a version bump. Bump CACHE_NAME after removing or
  * renaming files so stale entries are dropped.
  */
-const CACHE_NAME = "rto-v2";
+const CACHE_NAME = "rto-v3";
 
 const APP_SHELL = [
   "./",
@@ -28,6 +28,7 @@ const APP_SHELL = [
   "src/js/domain/dates.js",
   "src/js/domain/days.js",
   "src/js/domain/rounding.js",
+  "src/js/domain/shift.js",
   "src/js/domain/stats.js",
   "src/js/domain/time.js",
   "src/js/domain/types.js",
@@ -39,15 +40,19 @@ const APP_SHELL = [
   "src/js/ui/actions.js",
   "src/js/ui/dialogs.js",
   "src/js/ui/dom.js",
+  "src/js/ui/tabs.js",
   "src/js/ui/theme.js",
   "src/js/ui/components/bar-chart.js",
   "src/js/ui/views/alerts.js",
   "src/js/ui/views/charts.js",
   "src/js/ui/views/day-dialog.js",
   "src/js/ui/views/history.js",
+  "src/js/ui/views/month-card.js",
+  "src/js/ui/views/month-summary.js",
   "src/js/ui/views/now.js",
-  "src/js/ui/views/settings-dialog.js",
-  "src/js/ui/views/summary.js",
+  "src/js/ui/views/punch-dialog.js",
+  "src/js/ui/views/settings.js",
+  "src/js/ui/views/toast.js",
   "src/js/ui/views/verify-dialog.js",
   "vendor/lume-js/index.mjs",
   "vendor/lume-js/addons.mjs",

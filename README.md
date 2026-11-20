@@ -6,12 +6,15 @@ There's no account, server or tracking. Everything is stored on your device, and
 
 ## Features
 
-- **One-tap punches** with a live clock, plus manual entry and editing.
+- **One-tap punches** with a live clock. Forgot to clock in or out? Set the time instead. Every punch can be undone or adjusted from the confirmation.
+- **Leave-by guide** while you're on the clock: what the timesheet shows if you leave now, when the next quarter hour gets credited, and when you'll be on pace for the month.
+- **Forgotten clock-out guard**: a shift left open overnight asks when you left instead of becoming a 20-hour day.
+- **Quick day entry** with Today/Yesterday, your usual times in one tap, and extras (PTO, timesheet, note) tucked under More.
 - **Day types:** Office, WFH, OOO and Sick.
 - **Your entry vs. the official timesheet.** Each day can hold both. Unverified days are marked `*`, and when the weekly timesheet is out, a review sheet confirms them in a couple of taps.
 - **Rounding rules** on a 15-minute grid: Down, Up, Nearest, None, or Custom with a grace window. A **rounding check** shows how well the rules predict the timesheet.
 - **Company holidays**, skipped for workdays left and presence.
-- **Monthly stats:** daily average, presence %, workdays left and the average still needed, plus charts by month or year.
+- **Home / History / Settings tabs.** Home shows today and the current month (average, presence, the average still needed). History has any month's stats, charts and the day list.
 - **Light, dark or system theme.**
 - **Works offline.**
 

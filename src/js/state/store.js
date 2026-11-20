@@ -9,7 +9,7 @@
  */
 /** @import { Day, DayStatus, Entry, Holiday, Settings } from "../domain/types.js" */
 /** @import { PersistState, SaveTarget } from "./persistence.js" */
-import { effect, state } from "lume-js";
+import { batch, effect, state } from "lume-js";
 import { DEFAULT_SETTINGS, STATUSES, STATUS_LABEL } from "../domain/constants.js";
 import { toDateKey } from "../domain/dates.js";
 import { EMPTY_ENTRY, isOpen, predictEntry } from "../domain/days.js";
@@ -20,6 +20,7 @@ import { formatTime } from "../lib/format.js";
 
 const SAVE_DEBOUNCE_MS = 120;
 const TOAST_MS = 2600;
+const TOAST_WITH_ACTIONS_MS = 6000;
 
 /**
  * @typedef {object} DataState
@@ -48,10 +49,13 @@ const initialData = {
 export const data = state(initialData);
 
 /**
+ * @typedef {"home" | "history" | "settings"} Tab
  * @typedef {"week" | "month" | "all"} HistoryFilter
  * @typedef {"month" | "year"} ChartGroup
+ * @typedef {"undo" | "adjust"} ToastAction
  *
  * @typedef {object} UiState
+ * @property {Tab} tab
  * @property {number} nowMs
  * @property {string} today
  * @property {HistoryFilter} filter
@@ -59,12 +63,14 @@ export const data = state(initialData);
  * @property {string | null} monthSel  null = follow today
  * @property {string | null} yearSel   null = follow the selected month
  * @property {string} toast
+ * @property {ToastAction[]} toastActions
  */
 
 const now = new Date();
 
 /** @type {UiState} */
 const initialUi = {
+  tab: "home",
   nowMs: now.getTime(),
   today: toDateKey(now),
   filter: "month",
@@ -72,6 +78,7 @@ const initialUi = {
   monthSel: null,
   yearSel: null,
   toast: "",
+  toastActions: [],
 };
 
 export const ui = state(initialUi);
@@ -143,14 +150,30 @@ export async function loadState() {
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let toastTimer;
 
-/** @param {string} message */
-export function toast(message) {
-  ui.toast = message;
+/**
+ * Show a short message, optionally with Undo / Adjust buttons (which stay
+ * longer, so there is time to tap them).
+ * @param {string} message
+ * @param {ToastAction[]} [actions]
+ */
+export function toast(message, actions = []) {
+  batch(() => {
+    ui.toast = message;
+    ui.toastActions = actions;
+  });
+
   clearTimeout(toastTimer);
 
-  toastTimer = setTimeout(() => {
+  toastTimer = setTimeout(dismissToast, actions.length ? TOAST_WITH_ACTIONS_MS : TOAST_MS);
+}
+
+export function dismissToast() {
+  clearTimeout(toastTimer);
+
+  batch(() => {
     ui.toast = "";
-  }, TOAST_MS);
+    ui.toastActions = [];
+  });
 }
 
 // ---------------------------------------------------------------- days
@@ -187,42 +210,130 @@ export function deleteDay(date) {
   data.days = data.days.filter((d) => d.date !== date);
 }
 
-/** Clock in, or clock out of the open day. */
-export async function punch() {
+// ---------------------------------------------------------------- punches
+
+/**
+ * The record a punch replaced, so the toast's Undo can put it back.
+ * @type {{ date: string, before: Day | null } | null}
+ */
+let lastPunch = null;
+
+/** @param {string} date */
+function rememberForUndo(date) {
+  lastPunch = { date, before: findDay(date) };
+}
+
+/** Revert the most recent punch or punch-time change. */
+export function undoLastPunch() {
+  if (!lastPunch) return;
+
+  const { date, before } = lastPunch;
+
+  lastPunch = null;
+
+  if (before) saveDay(before);
+  else deleteDay(date);
+
+  toast("Undone");
+}
+
+/**
+ * Clock in today at `time` (default now).
+ * @param {string} [time] "HH:MM"
+ * @returns {string | null} error message
+ */
+export function clockIn(time = timeOf(new Date())) {
+  const today = toDateKey(new Date());
+  const existing = findDay(today);
+
+  if (findOpenDay()) return "You are still clocked in. Clock out first.";
+
+  if (existing?.recorded?.start) return "Today already has a clock-in. Edit the day instead.";
+
+  rememberForUndo(today);
+
+  saveDay({
+    date: today,
+    status: "office",
+    recorded: { ...EMPTY_ENTRY, start: time, pto: existing?.recorded?.pto ?? null },
+    actual: existing?.actual ?? null,
+    note: existing?.note ?? null,
+  });
+
+  toast(`Clocked in at ${formatTime(time)}`, ["undo", "adjust"]);
+
+  return null;
+}
+
+/**
+ * Clock out of the open shift at `time` (default now).
+ * @param {string} [time] "HH:MM"
+ * @returns {string | null} error message
+ */
+export function clockOut(time) {
   const open = findOpenDay();
 
-  if (open?.recorded) {
-    let end = timeOf(new Date());
+  if (!open?.recorded?.start) return "You are not clocked in.";
 
+  let end = time ?? timeOf(new Date());
+
+  if (end === open.recorded.start) {
     // A same-minute tap would be a zero-length shift.
-    if (end === open.recorded.start) end = fromMinutes(toMinutes(end) + 1);
+    if (time) return "Clock-out must differ from clock-in.";
 
-    saveDay({ ...open, recorded: { ...open.recorded, end } });
-    toast(`Clocked out at ${formatTime(end)}`);
-  } else {
-    const today = toDateKey(new Date());
-    const existing = findDay(today);
-
-    if (existing?.recorded?.start) {
-      toast("Today already has a clock-in. Edit the day instead.");
-
-      return;
-    }
-
-    const start = timeOf(new Date());
-
-    saveDay({
-      date: today,
-      status: "office",
-      recorded: { ...EMPTY_ENTRY, start, pto: existing?.recorded?.pto ?? null },
-      actual: existing?.actual ?? null,
-      note: existing?.note ?? null,
-    });
-
-    toast(`Clocked in at ${formatTime(start)}`);
+    end = fromMinutes(toMinutes(end) + 1);
   }
 
-  await flush();
+  // A chosen time is on the shift's own day (no overnight shifts by hand).
+  if (time && toMinutes(end) < toMinutes(open.recorded.start)) {
+    return `Clock-out must be after ${formatTime(open.recorded.start)}.`;
+  }
+
+  rememberForUndo(open.date);
+  saveDay({ ...open, recorded: { ...open.recorded, end } });
+  toast(`Clocked out at ${formatTime(end)}`, ["undo", "adjust"]);
+
+  return null;
+}
+
+/**
+ * Change when the open shift (or today's shift) started.
+ * @param {string} time "HH:MM"
+ * @returns {string | null} error message
+ */
+export function setStartTime(time) {
+  const day = findOpenDay() ?? findDay(toDateKey(new Date()));
+
+  if (!day?.recorded?.start) return "There is no clock-in to change.";
+
+  if (day.recorded.end && toMinutes(time) >= toMinutes(day.recorded.end)) {
+    return `Clock-in must be before ${formatTime(day.recorded.end)}.`;
+  }
+
+  rememberForUndo(day.date);
+  saveDay({ ...day, recorded: { ...day.recorded, start: time } });
+  toast(`Clock-in set to ${formatTime(time)}`, ["undo"]);
+
+  return null;
+}
+
+/**
+ * Change today's clock-out (after a punch).
+ * @param {string} time "HH:MM"
+ * @returns {string | null} error message
+ */
+export function setEndTime(time) {
+  const day = findDay(toDateKey(new Date()));
+
+  if (!day?.recorded?.start || !day.recorded.end) return "There is no clock-out to change.";
+
+  if (toMinutes(time) <= toMinutes(day.recorded.start)) return `Clock-out must be after ${formatTime(day.recorded.start)}.`;
+
+  rememberForUndo(day.date);
+  saveDay({ ...day, recorded: { ...day.recorded, end: time } });
+  toast(`Clock-out set to ${formatTime(time)}`, ["undo"]);
+
+  return null;
 }
 
 /**

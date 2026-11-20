@@ -1,12 +1,13 @@
 /** Manual entry / edit sheet, and the delete confirmation. */
 import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
-import { show } from "lume-js/handlers";
+import { boolAttr, show } from "lume-js/handlers";
 import { STATUSES, STATUS_LABEL } from "../../domain/constants.js";
-import { isDateKey } from "../../domain/dates.js";
+import { addDays, isDateKey } from "../../domain/dates.js";
 import { isOpen, predictEntry } from "../../domain/days.js";
 import { round2, spanHours } from "../../domain/time.js";
 import { formatDay, formatHours, formatTime } from "../../lib/format.js";
+import { model } from "../../state/model.js";
 import { data, deleteDay, findDay, predictedTimesheet, saveDay, toast, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { closeDialogs, openDialog } from "../dialogs.js";
@@ -79,7 +80,11 @@ export function mountDayDialog() {
     hoursLocked: false,
     canFill: false,
     preview: "",
+    usualLabel: "",
+    moreOpen: false,
   });
+
+  const dateChips = byId("f-date-chips");
 
   group.add(
     effect(() => {
@@ -87,7 +92,26 @@ export function mountDayDialog() {
       const { settings } = data;
 
       render(statusEl, html`${segmentButtons(STATUS_OPTIONS, status, "day-status")}`);
+
+      const today = ui.today;
+      const yesterday = addDays(today, -1);
+
+      render(
+        dateChips,
+        html`${segmentButtons(
+          [
+            [today, "Today"],
+            [yesterday, "Yesterday"],
+          ],
+          form.date,
+          "day-date",
+        )}`,
+      );
+
       const office = status === "office";
+      const usual = model.usual;
+
+      form.usualLabel = office && usual && !rStart && !rEnd ? `Usual: ${formatTime(usual.start)} – ${formatTime(usual.end)}` : "";
 
       form.statusHint = STATUS_HINT[status];
       form.showTimes = office;
@@ -115,12 +139,19 @@ export function mountDayDialog() {
     const day = date ? findDay(date) : null;
     const r = day?.recorded;
     const a = day?.actual;
+    const hasExtras = Boolean(a || day?.note || r?.pto != null || (r && r.hours != null && !r.start));
+
+    // A new entry defaults to today, or yesterday when today is already logged.
+    const defaultDate = findDay(ui.today) ? addDays(ui.today, -1) : ui.today;
+
+    form.moreOpen = false;
 
     Object.assign(form, {
-      title: day ? `Edit ${formatDay(day.date, { year: false })}` : "Manual entry",
+      title: day ? `Edit ${formatDay(day.date, { year: false })}` : "Add a day",
       saveLabel: day ? "Save changes" : "Save day",
+      moreOpen: hasExtras,
       editOf: day?.date ?? null,
-      date: day?.date ?? ui.today,
+      date: day?.date ?? defaultDate,
       status: day?.status ?? "office",
       rStart: r?.start ?? "",
       rEnd: r?.end ?? "",
@@ -229,9 +260,25 @@ export function mountDayDialog() {
   };
 
   // Some iOS pickers fire only "change"; mirror bound inputs on change too.
+  /**
+   * Picking a date that already has a day opens that day for editing,
+   * instead of silently replacing it. When editing, a new date moves the day.
+   * @param {string} date
+   */
+  function pickDate(date) {
+    if (form.editOf === null && findDay(date)) open(date);
+    else form.date = date;
+  }
+
   /** @param {Event} event */
   const onChange = (event) => {
     const el = event.target;
+
+    if (el instanceof HTMLInputElement && el.id === "f-date") {
+      pickDate(el.value);
+
+      return;
+    }
 
     if (el instanceof HTMLInputElement && el.type !== "checkbox" && el.dataset.bind && el.dataset.bind in form) {
       /** @type {Record<string, unknown>} */ (form)[el.dataset.bind] = el.value;
@@ -254,6 +301,12 @@ export function mountDayDialog() {
     "edit-day": (el) => {
       closeDialogs();
       open(el.dataset.date ?? null);
+    },
+    "day-date": (el) => pickDate(el.dataset.value ?? ui.today),
+    "use-usual": () => {
+      const usual = model.usual;
+
+      if (usual) Object.assign(form, { rStart: usual.start, rEnd: usual.end });
     },
     "day-status": (el) => {
       form.status = /** @type {DayStatus} */ (el.dataset.value);
@@ -283,7 +336,7 @@ export function mountDayDialog() {
     },
   });
 
-  group.add(bindDom(dialog, form, { handlers: [show] }));
+  group.add(bindDom(dialog, form, { handlers: [show, boolAttr("open")] }));
 
   return () => group.dispose();
 }

@@ -10,39 +10,44 @@
 import { batch, effect, state } from "lume-js";
 import { groupKey } from "../domain/dates.js";
 import { isOpen, needsVerification } from "../domain/days.js";
+import { isStaleShift, usualTimes } from "../domain/shift.js";
 import { monthlyStats, neededAverage, workdaysLeft } from "../domain/stats.js";
 import { timesheetCoverage } from "../domain/verification.js";
 import { data, ui } from "./store.js";
 
 /**
  * @typedef {object} Model
- * @property {MonthStat[]} stats         Oldest first.
- * @property {string} currentKey         Month containing today.
- * @property {string} selKey             Month selected for summary/history.
+ * @property {MonthStat[]} stats            Oldest first.
+ * @property {string[]} monthKeys           Newest first; always includes the current month.
+ * @property {string} currentKey            Month containing today (Home).
+ * @property {MonthStat | null} currentStat
+ * @property {number} autoLeft              Workdays left this month (auto).
+ * @property {number} left                  ...or the manual override.
+ * @property {number | null} needed         Average needed on each remaining day.
+ * @property {string} selKey                Month selected on the History tab.
  * @property {MonthStat | null} selStat
- * @property {string[]} monthKeys        Newest first.
- * @property {number} autoLeft
- * @property {number} left
- * @property {number | null} needed
- * @property {string} coverage           Last date the latest timesheet covers.
- * @property {Day[]} toVerify            Oldest first.
- * @property {number} laterUnverified    Unverified days after the coverage date.
+ * @property {string} coverage              Last date the latest timesheet covers.
+ * @property {Day[]} toVerify               Oldest first.
+ * @property {number} laterUnverified       Unverified days after the coverage date.
  * @property {Day | null} todayDay
  * @property {Day | null} openDay
  * @property {Holiday | null} todayHoliday
  * @property {Map<string, Holiday>} holidayByDate
+ * @property {{ start: string, end: string } | null} usual  Typical clock-in/out.
+ * @property {boolean} staleShift          An open shift looks like a forgotten clock-out.
  */
 
 /** @type {Model} */
 const initialModel = {
   stats: [],
-  currentKey: "",
-  selKey: "",
-  selStat: null,
   monthKeys: [],
+  currentKey: "",
+  currentStat: null,
   autoLeft: 0,
   left: 0,
   needed: null,
+  selKey: "",
+  selStat: null,
   coverage: "",
   toVerify: [],
   laterUnverified: 0,
@@ -50,6 +55,8 @@ const initialModel = {
   openDay: null,
   todayHoliday: null,
   holidayByDate: new Map(),
+  usual: null,
+  staleShift: false,
 };
 
 export const model = state(initialModel);
@@ -62,12 +69,12 @@ effect(() => {
 
   const stats = monthlyStats(days, holidays, settings, today);
   const currentKey = groupKey(today, settings.grouping);
+  const currentStat = stats.find((s) => s.key === currentKey) ?? null;
   const monthKeys = [...new Set([...stats.map((s) => s.key), currentKey])].sort().reverse();
   const selKey = monthSel && monthKeys.includes(monthSel) ? monthSel : currentKey;
-  const selStat = stats.find((s) => s.key === selKey) ?? null;
-  const autoLeft = workdaysLeft(selKey, days, holidays, settings, today);
+  const autoLeft = workdaysLeft(currentKey, days, holidays, settings, today);
   const override = settings.workdaysOverride;
-  const left = override?.key === selKey ? override.value : autoLeft;
+  const left = override?.key === currentKey ? override.value : autoLeft;
   const coverage = timesheetCoverage(today, settings.releaseDay);
   const unverified = days.filter((d) => d.date <= today && needsVerification(d));
   const toVerify = unverified.filter((d) => d.date <= coverage).reverse();
@@ -76,13 +83,14 @@ effect(() => {
   batch(() => {
     Object.assign(model, {
       stats,
-      currentKey,
-      selKey,
-      selStat,
       monthKeys,
+      currentKey,
+      currentStat,
       autoLeft,
       left,
-      needed: neededAverage(selStat, left, settings.target),
+      needed: neededAverage(currentStat, left, settings.target),
+      selKey,
+      selStat: stats.find((s) => s.key === selKey) ?? null,
       coverage,
       toVerify,
       laterUnverified: unverified.length - toVerify.length,
@@ -90,6 +98,15 @@ effect(() => {
       openDay: days.find(isOpen) ?? null,
       todayHoliday: holidayByDate.get(today) ?? null,
       holidayByDate,
+      usual: usualTimes(days),
     });
   });
+});
+
+// Separate effect: it reads the ticking clock, and writing the same boolean
+// back is a no-op, so dependents only re-render when it actually flips.
+effect(() => {
+  const now = new Date(ui.nowMs);
+
+  model.staleShift = isStaleShift(model.openDay, ui.today, now.getHours() * 60 + now.getMinutes());
 });

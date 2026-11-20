@@ -108,6 +108,34 @@
     margin-inline-start: auto;
   }
 
+  .input--time-lg {
+    min-height: 3.5rem;
+    font-size: 1.5rem;
+    font-weight: 650;
+  }
+
+  .date-row {
+    flex-wrap: nowrap;
+  }
+
+  .input--date {
+    flex: 1;
+  }
+
+  /* Collapsible "More" section in the day sheet. */
+  .more {
+    margin-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .more__summary {
+    padding-block: var(--space-3);
+    color: var(--color-accent);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
   .input--compact {
     display: inline-block;
     width: 4.5rem;
