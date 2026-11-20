@@ -1,7 +1,7 @@
 /** Settings tab: theme, target, grouping, rounding, holidays, rounding check, backup. */
 import { batch, bindDom, effect, state } from "lume-js";
 import { createCleanupGroup, watch } from "lume-js/addons";
-import { holidaysToText, parseHolidays, replaceHolidaysForYear } from "../../domain/backup.js";
+import { backupFileName, holidaysToText, parseHolidays, replaceHolidaysForYear } from "../../domain/backup.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
 import { PRESET_GRACE, graceOf, roundTime } from "../../domain/rounding.js";
 import { roundingCheck } from "../../domain/verification.js";
@@ -290,14 +290,15 @@ export function mountSettings() {
   });
 
   async function exportBackup() {
-    const name = `rto-backup-${ui.today}.json`;
+    const name = backupFileName(new Date());
     const file = new File([backupJson()], name, { type: "application/json" });
 
     // The share sheet is the reliable way to "Save to Files" from an iOS
-    // Home Screen app; elsewhere fall back to a normal download.
+    // Home Screen app; elsewhere fall back to a normal download. Share the
+    // file alone: a title or text is saved by iOS as an extra .txt file.
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: name });
+        await navigator.share({ files: [file] });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
 

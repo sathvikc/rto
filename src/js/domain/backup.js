@@ -1,6 +1,6 @@
 /** @import { Backup, Day, DayStatus, Entry, Holiday, RoundingRule, Settings } from "./types.js" */
 import { BACKUP_VERSION, STATUSES } from "./constants.js";
-import { isDateKey } from "./dates.js";
+import { isDateKey, pad2, toDateKey } from "./dates.js";
 import { isTime, round2 } from "./time.js";
 
 const ROUNDING_MODES = ["down", "up", "nearest", "custom", "none"];
@@ -254,3 +254,10 @@ export function mergeDays(local, incoming) {
 
   return { days: [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date)), added, replaced };
 }
+
+/**
+ * Backup file name with the local date and time, e.g.
+ * "rto-backup-2026-11-20-1532.json", so several exports a day don't clash.
+ * @param {Date} at
+ */
+export const backupFileName = (at) => `rto-backup-${toDateKey(at)}-${pad2(at.getHours())}${pad2(at.getMinutes())}.json`;
