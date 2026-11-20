@@ -3,7 +3,7 @@ import { effect, state } from "lume-js";
 import { createCleanupGroup, repeat } from "lume-js/addons";
 import { STATUS_LABEL } from "../../domain/constants.js";
 import { addDays, groupKey, startOfWeekMonday } from "../../domain/dates.js";
-import { canToggleMatch, predictEntry, resolveDay } from "../../domain/days.js";
+import { canToggleMatch, isVerified, predictEntry, resolveDay } from "../../domain/days.js";
 import { isTime } from "../../domain/time.js";
 import { formatDay, formatHours, formatTime, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
@@ -158,6 +158,19 @@ export function mountHistory() {
         if (year !== "all") rows = days.filter((d) => d.date.startsWith(year));
 
         caption.textContent = plural(rows.length, "day");
+      }
+
+      // "Verified only" shows what the latest timesheet covers: verified
+      // days up to its coverage date.
+      if (ui.verifiedOnly) {
+        const coverage = model.coverage;
+        const shown = rows.filter((d) => d.date <= coverage && isVerified(d));
+        const hidden = rows.length - shown.length;
+
+        rows = shown;
+
+        if (hidden)
+          caption.textContent = `${caption.textContent} · ${plural(hidden, "day")} hidden (unverified or after ${formatDay(coverage, { year: false })})`;
       }
 
       list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today, holidayByDate.get(d.date)) }));

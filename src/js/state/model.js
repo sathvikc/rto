@@ -9,7 +9,7 @@
 /** @import { Day, Holiday, MonthStat } from "../domain/types.js" */
 import { batch, effect, state } from "lume-js";
 import { groupKey } from "../domain/dates.js";
-import { isOpen, needsVerification } from "../domain/days.js";
+import { isOpen, isVerified, needsVerification } from "../domain/days.js";
 import { isStaleShift, usualTimes } from "../domain/shift.js";
 import { monthlyStats, neededAverage, workdaysLeftDates } from "../domain/stats.js";
 import { timesheetCoverage } from "../domain/verification.js";
@@ -26,7 +26,9 @@ import { data, ui } from "./store.js";
  * @property {number} left                  ...or the manual override.
  * @property {number | null} needed         Average needed on each remaining day.
  * @property {string} selKey                Month selected on the History tab.
- * @property {MonthStat | null} selStat
+ * @property {MonthStat[]} historyStats     Stats for History: all days, or verified only.
+ * @property {MonthStat | null} selStat     Selected month in the History view.
+ * @property {MonthStat | null} selStatOther  ...the same month in the other view, for comparison.
  * @property {string} coverage              Last date the latest timesheet covers.
  * @property {Day[]} toVerify               Oldest first.
  * @property {number} laterUnverified       Unverified days after the coverage date.
@@ -49,7 +51,9 @@ const initialModel = {
   left: 0,
   needed: null,
   selKey: "",
+  historyStats: [],
   selStat: null,
+  selStatOther: null,
   coverage: "",
   toVerify: [],
   laterUnverified: 0,
@@ -65,11 +69,26 @@ export const model = state(initialModel);
 
 effect(() => {
   const { days, holidays, settings, loaded } = data;
-  const { today, monthSel } = ui;
+  const { today, monthSel, verifiedOnly } = ui;
 
   if (!loaded) return;
 
   const stats = monthlyStats(days, holidays, settings, today);
+
+  // History's "Verified only" view mirrors the official dashboard: verified
+  // days (WFH/OOO/Sick count as verified) up to the date the latest
+  // timesheet covers, with presence counted only up to that date.
+  const coverage = timesheetCoverage(today, settings.releaseDay);
+
+  const verifiedStats = monthlyStats(
+    days.filter((d) => d.date <= coverage && isVerified(d)),
+    holidays,
+    settings,
+    coverage,
+  );
+
+  const historyStats = verifiedOnly ? verifiedStats : stats;
+  const otherStats = verifiedOnly ? stats : verifiedStats;
   const currentKey = groupKey(today, settings.grouping);
   const currentStat = stats.find((s) => s.key === currentKey) ?? null;
   const monthKeys = [...new Set([...stats.map((s) => s.key), currentKey])].sort().reverse();
@@ -78,7 +97,6 @@ effect(() => {
   const autoLeft = autoLeftDates.length;
   const override = settings.workdaysOverride;
   const left = override?.key === currentKey ? override.value : autoLeft;
-  const coverage = timesheetCoverage(today, settings.releaseDay);
   const unverified = days.filter((d) => d.date <= today && needsVerification(d));
   const toVerify = unverified.filter((d) => d.date <= coverage).reverse();
   const holidayByDate = new Map(holidays.map((h) => [h.date, h]));
@@ -94,7 +112,9 @@ effect(() => {
       left,
       needed: neededAverage(currentStat, left, settings.target),
       selKey,
-      selStat: stats.find((s) => s.key === selKey) ?? null,
+      historyStats,
+      selStat: historyStats.find((s) => s.key === selKey) ?? null,
+      selStatOther: otherStats.find((s) => s.key === selKey) ?? null,
       coverage,
       toVerify,
       laterUnverified: unverified.length - toVerify.length,

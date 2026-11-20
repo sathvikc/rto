@@ -62,6 +62,7 @@ export const data = state(initialData);
  * @property {ChartGroup} chartGroup
  * @property {string | null} monthSel  null = follow today
  * @property {string | null} yearSel   null = follow the selected month
+ * @property {boolean} verifiedOnly    History shows timesheet-verified days only
  * @property {string} toast
  * @property {ToastAction[]} toastActions
  */
@@ -77,6 +78,7 @@ const initialUi = {
   chartGroup: "month",
   monthSel: null,
   yearSel: null,
+  verifiedOnly: false,
   toast: "",
   toastActions: [],
 };

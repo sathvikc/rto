@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
+import { isVerified } from "../../src/js/domain/days.js";
 import { combineStats, monthlyStats, neededAverage, workdaysLeft, workdaysLeftDates } from "../../src/js/domain/stats.js";
 import { office, plain } from "../helpers.js";
 
@@ -96,4 +97,27 @@ test("combineStats sums months", () => {
   const c = combineStats([a, a]);
 
   assert.deepEqual([c.counted, c.avg], [2, 8]);
+});
+
+test("dashboard view: verified days up to the timesheet coverage, presence counted to that date", () => {
+  const sheet = { start: "09:00", end: "17:00", hours: 8, pto: null };
+
+  const days = [
+    { ...office("2026-11-16", "09:00", "17:00"), actual: sheet },
+    { ...office("2026-11-17", "09:00", "17:00"), actual: sheet },
+    office("2026-11-18", "09:00", "17:00"), // unverified, within coverage
+    office("2026-11-23", "09:00", "17:00"), // after coverage
+  ];
+
+  const coverage = "2026-11-20";
+
+  const [st] = monthlyStats(
+    days.filter((d) => d.date <= coverage && isVerified(d)),
+    [],
+    settings,
+    coverage,
+  );
+
+  // Week of Nov 15 only: Mon-Fri = 5 weekdays, 2 verified present.
+  assert.deepEqual([st.counted, st.present, st.denom, st.presencePct], [2, 2, 5, 40]);
 });

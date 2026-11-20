@@ -87,9 +87,12 @@
           <button type="button" class="btn btn--pill btn--small" data-action="open-day-form">+ Add day</button>
         </header>
 
-        <div class="cluster">
-          <label for="month-select" class="text-dim text-small">Month</label>
-          <select id="month-select" class="select"></select>
+        <div class="cluster cluster--between">
+          <span class="cluster">
+            <label for="month-select" class="text-dim text-small">Month</label>
+            <select id="month-select" class="select"></select>
+          </span>
+          <div id="data-view" class="seg" role="group" aria-label="Which days to include"></div>
         </div>
         <article id="month-summary" class="card" aria-label="Month summary"></article>
 
@@ -196,6 +199,81 @@
             <input id="import-file" type="file" accept=".json,application/json,text/plain" hidden />
           </div>
           <p class="field__hint" data-bind="storageInfo"></p>
+        </section>
+
+        <section class="card settings__group help" aria-labelledby="s-help-heading">
+          <h3 id="s-help-heading" class="settings__heading">How it works</h3>
+
+          <details class="help__item">
+            <summary>Clocking in and out</summary>
+            <p>
+              Tap the big button when you arrive and when you leave. Forgot? Use <b>Set the time</b> under the button, or tap the "Started
+              …" line to correct it. Every punch can be undone from the message that pops up.
+            </p>
+            <p>A shift still open from an earlier day asks when you left, so a forgotten clock-out never becomes a 20-hour day.</p>
+          </details>
+
+          <details class="help__item">
+            <summary>Leave-by panel</summary>
+            <p>
+              While you're on the clock, Home shows what the timesheet records if you leave now, when the next quarter hour gets credited,
+              and when you'll hit the average you need this month.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Day types and PTO</summary>
+            <p>
+              <b>Office</b> counts toward presence and your average (work + PTO). For a partial day off, keep Office and add the PTO hours.
+            </p>
+            <p>
+              <b>OOO</b> and <b>Sick</b>: full day out. They count as present but aren't part of your average. <b>WFH</b>: not present, not
+              in your average.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Timesheet check and Matches</summary>
+            <p>
+              Your punches are a prediction until the official timesheet confirms them. Unverified office days show
+              <span class="star">*</span>.
+            </p>
+            <p>
+              The timesheet comes out on Wednesday and covers through the previous Friday. Home then shows "days to check". Tap
+              <b>Matches?</b> on a day when the timesheet agrees (tap again to undo), or <b>Edit</b> to enter what it really says. WFH, OOO
+              and Sick days need no check.
+            </p>
+            <p>History → <b>Verified only</b> shows the numbers from confirmed days alone, to compare with the official dashboard.</p>
+          </details>
+
+          <details class="help__item">
+            <summary>Rounding</summary>
+            <p>
+              Times round to a 15-minute grid. <b>Custom</b> rounds down when you're at most "grace" minutes past the quarter, otherwise up.
+              With a 4-minute grace, 4:16–4:19 counts as 4:15 and 4:20 counts as 4:30. The <b>Rounding check</b> below compares predictions
+              with verified days and suggests a grace that fits.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Months, presence and days left</summary>
+            <p>
+              <b>Tracking month</b> puts a week that straddles two months in the earlier month (a week starting Nov 29 belongs to November),
+              like the timesheet. <b>Calendar month</b> uses each day's own month.
+            </p>
+            <p>
+              Presence = present days ÷ weekdays in the weeks you logged, not counting company holidays. "Office days left" skips weekends,
+              holidays and days already marked WFH, OOO or Sick.
+            </p>
+          </details>
+
+          <details class="help__item">
+            <summary>Your data</summary>
+            <p>
+              Everything stays on this device: there's no account or server. Export a backup now and then. Import merges by date, and days
+              in the file replace the same dates here.
+            </p>
+          </details>
         </section>
 
         <section class="card settings__group" aria-labelledby="s-danger-heading">

@@ -4,6 +4,18 @@ Return to office, tracked from your phone. RTO is a small progressive web app fo
 
 There's no account, server or tracking. Everything is stored on your device, and JSON export/import is the backup.
 
+## Screenshots
+
+|                                                   Home: on the clock                                                    |                                                             History                                                              |                                                    Add or fix a day                                                    |
+| :---------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------: |
+| <img src="docs/screenshots/home-light.png" alt="Home: live clock, clock-out button and the leave-by panel" width="240"> | <img src="docs/screenshots/history-light.png" alt="History: month summary with the verified comparison, and charts" width="240"> | <img src="docs/screenshots/day-sheet-light.png" alt="Day sheet: Today/Yesterday, day type, times and PTO" width="240"> |
+
+|                                     Dark theme                                      |                                                    Verified only                                                    |                                          Help                                          |
+| :---------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
+| <img src="docs/screenshots/home-dark.png" alt="Home in the dark theme" width="240"> | <img src="docs/screenshots/history-verified-dark.png" alt="History limited to timesheet-verified days" width="240"> | <img src="docs/screenshots/help-dark.png" alt="How it works, in Settings" width="240"> |
+
+Screenshots use generated demo data.
+
 ## Features
 
 - **One-tap punches** with a live clock. Forgot to clock in or out? Set the time instead. Every punch can be undone or adjusted from the confirmation.
@@ -15,6 +27,8 @@ There's no account, server or tracking. Everything is stored on your device, and
 - **Rounding rules** on a 15-minute grid: Down, Up, Nearest, None, or Custom with a grace window. A **rounding check** shows how well the rules predict the timesheet.
 - **Company holidays**, skipped for workdays left and presence.
 - **Home / History / Settings tabs.** Home shows today and the current month (average, presence, the average still needed). History has any month's stats, charts and the day list.
+- **Verified only** view in History: the month's numbers from timesheet-confirmed days, up to the date the latest timesheet covers, to compare with the official dashboard.
+- **How it works** help in Settings.
 - **Light, dark or system theme.**
 - **Works offline.**
 

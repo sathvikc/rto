@@ -36,6 +36,7 @@ tests/                   node:test unit tests
 vendor/lume-js/          vendored Lume.js (do not edit)
 types/lume-js/           Lume type declarations for the type-checker
 scripts/                 dev scripts (e.g. app-shell check)
+docs/screenshots/        README screenshots (generated demo data only)
 ```
 
 Dependencies point inward: `ui` → `state` → `domain`/`lib`. `domain` imports nothing outside itself. `state` never imports from `ui`.
