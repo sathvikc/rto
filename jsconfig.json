@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0,
+    "types": ["node"],
+    "paths": {
+      "lume-js": ["./types/lume-js/index.d.ts"],
+      "lume-js/addons": ["./types/lume-js/addons/index.d.ts"],
+      "lume-js/handlers": ["./types/lume-js/handlers/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.js", "tests/**/*.js", "scripts/**/*.js"],
+  "exclude": ["node_modules", "vendor"]
+}
