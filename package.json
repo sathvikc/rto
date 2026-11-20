@@ -1,0 +1,30 @@
+{
+  "name": "rto",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Return to office: track office days and hours. A static, offline-first PWA.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p jsconfig.json",
+    "check:shell": "node scripts/check-app-shell.js",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run check:shell && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@stylistic/eslint-plugin": "5.10.0",
+    "@types/node": "22.20.5",
+    "eslint": "10.15.0",
+    "globals": "17.14.0",
+    "prettier": "3.10.1",
+    "typescript": "5.9.3"
+  }
+}

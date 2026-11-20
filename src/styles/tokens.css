@@ -1,0 +1,77 @@
+/*
+ * Design tokens. Every color is defined once with light-dark(); the theme
+ * is chosen by color-scheme: system by default, or forced with
+ * html[data-theme="light" | "dark"] (set before first paint in index.html).
+ */
+@layer tokens, base, layout, components, forms, dialogs, utilities;
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* Color */
+    --color-bg: light-dark(#f4f1ea, #171612);
+    --color-surface: light-dark(#fffdf8, #221f1a);
+    --color-surface-2: light-dark(#efe9dc, #2c2923);
+    --color-text: light-dark(#1a1a18, #f2efe6);
+    --color-text-dim: light-dark(#6f6b62, #a59f92);
+    --color-border: light-dark(#e3dccd, #3a362d);
+    --color-accent: light-dark(#1e7d3a, #2f9e4f);
+    --color-on-accent: #ffffff;
+    --color-punch-out: light-dark(#b4541d, #d9773f);
+    --color-info: light-dark(#2f6fae, #5b9be0);
+    --color-danger: light-dark(#b42318, #f97066);
+    --color-star: light-dark(#c2410c, #fb923c);
+    --color-ok: light-dark(#1e7d3a, #4ade80);
+    --color-wfh: light-dark(#6d5bd0, #a79af0);
+    --color-ooo: light-dark(#2f6fae, #7cb4ee);
+    --color-sick: light-dark(#b42318, #f97066);
+    --color-holiday: light-dark(#a16207, #e4b54a);
+    --color-warn: light-dark(#b42318, #f97066);
+    --color-tabbar: light-dark(rgb(255 253 248 / 0.92), rgb(34 31 26 / 0.92));
+    --color-backdrop: rgb(0 0 0 / 0.45);
+    --shadow-punch: 0 10px 30px light-dark(rgb(30 125 58 / 0.22), rgb(0 0 0 / 0.45));
+    --shadow-toast: 0 8px 24px rgb(0 0 0 / 0.25);
+
+    /* Type */
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --text-xs: 0.8125rem; /* 13px */
+    --text-sm: 0.875rem; /* 14px */
+    --text-md: 1rem; /* 16px */
+    --text-lg: 1.0625rem; /* 17px */
+    --text-xl: 1.25rem; /* 20px */
+    --text-2xl: 1.375rem; /* 22px */
+    --text-figure: 2.25rem; /* 36px */
+    --text-clock: 3.75rem; /* 60px */
+
+    /* Space */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    /* Shape */
+    --radius-sm: 0.75rem;
+    --radius-md: 1rem;
+    --radius-lg: 1.25rem;
+    --radius-sheet: 1.5rem;
+    --radius-pill: 999px;
+
+    /* Size */
+    --page-max: 35rem;
+    --tap-min: 2.75rem; /* 44px, Apple's minimum touch target */
+    --tabbar-height: 3.5rem;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+}

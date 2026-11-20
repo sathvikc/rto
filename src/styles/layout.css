@@ -1,0 +1,150 @@
+@layer layout {
+  .page {
+    max-width: var(--page-max);
+    margin-inline: auto;
+    /* Bottom: room for the fixed tab bar. */
+    padding-block: calc(env(safe-area-inset-top) + var(--space-3)) calc(env(safe-area-inset-bottom) + var(--tabbar-height) + var(--space-6));
+    padding-inline: max(var(--space-4), env(safe-area-inset-left)) max(var(--space-4), env(safe-area-inset-right));
+  }
+
+  /* ---- Tabs ---- */
+  .tab__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-block: var(--space-2) var(--space-4);
+  }
+
+  .tab__title {
+    font-size: 1.75rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+
+  .tab > .card + .card {
+    margin-top: var(--space-3);
+  }
+
+  .section {
+    margin-top: var(--space-8);
+  }
+
+  /* A row of items that wraps; spacing via gap. */
+  .cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .cluster--between {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .cluster--top {
+    align-items: flex-start;
+  }
+
+  .cluster--baseline {
+    align-items: baseline;
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .push {
+    margin-inline-start: auto;
+  }
+
+  /* ---- Now (top of page) ---- */
+  .now__top {
+    margin-top: var(--space-2);
+  }
+
+  .now__date {
+    font-size: var(--text-lg);
+    font-weight: 550;
+  }
+
+  .now__clock {
+    display: flex;
+    align-items: baseline;
+    font-size: var(--text-clock);
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .now__seconds {
+    margin-inline-start: 6px;
+    font-size: var(--text-2xl);
+    font-weight: 500;
+    color: var(--color-text-dim);
+  }
+
+  .now__status {
+    margin-top: var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+
+  /* Tappable "Started 8:57 AM ✎" line; disabled = plain text. */
+  .now__detail {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-dim);
+    text-align: start;
+  }
+
+  .now__detail:not(:disabled) {
+    text-decoration: underline dotted;
+    text-underline-offset: 4px;
+  }
+
+  .now__detail:disabled {
+    cursor: default;
+  }
+
+  .now__punch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin-block: var(--space-6) var(--space-3);
+  }
+
+  .now__quick {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  /* ---- History ---- */
+  .history__meta {
+    margin-top: var(--space-3);
+    min-height: 2.375rem;
+  }
+
+  .history__list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (max-width: 360px) {
+    :root {
+      --text-clock: 3.125rem;
+    }
+  }
+}

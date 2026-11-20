@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+
+# Backups exported from the app.
+rto-backup-*.json
+*.backup.json

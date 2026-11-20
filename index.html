@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>RTO</title>
+    <meta name="description" content="Return to office: track your office days and hours. Data stays on your device." />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f4f1ea" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="RTO" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-180.png" />
+
+    <!-- Apply the saved theme before first paint, so there is no flash. -->
+    <script>
+      try {
+        const theme = localStorage.getItem("rto-theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script>
+
+    <link rel="stylesheet" href="src/styles/tokens.css" />
+    <link rel="stylesheet" href="src/styles/base.css" />
+    <link rel="stylesheet" href="src/styles/layout.css" />
+    <link rel="stylesheet" href="src/styles/components.css" />
+    <link rel="stylesheet" href="src/styles/forms.css" />
+    <link rel="stylesheet" href="src/styles/dialogs.css" />
+
+    <script type="importmap">
+      {
+        "imports": {
+          "lume-js": "./vendor/lume-js/index.mjs",
+          "lume-js/addons": "./vendor/lume-js/addons.mjs",
+          "lume-js/handlers": "./vendor/lume-js/handlers.mjs"
+        }
+      }
+    </script>
+    <script type="module" src="src/js/main.js"></script>
+  </head>
+
+  <body>
+    <h1 class="visually-hidden">RTO: office time tracker</h1>
+
+    <main class="page">
+      <!-- ============ Home ============ -->
+      <section id="tab-home" class="tab" data-tab="home" aria-label="Home">
+        <header class="now__top">
+          <p class="now__date" data-bind="dateLine"></p>
+          <p class="now__clock"><span data-bind="clockText"></span><span class="now__seconds" data-bind="secondsText"></span></p>
+        </header>
+
+        <div id="now" class="now">
+          <p class="now__status" data-bind="statusLine"></p>
+          <button
+            type="button"
+            class="now__detail"
+            data-action="edit-punch-time"
+            data-disabled="detailStatic"
+            data-bind="detailLine"
+          ></button>
+
+          <div class="now__punch">
+            <button type="button" class="punch" data-action="punch" data-class-punch--out="isOpen" data-disabled="punchDisabled">
+              <span data-bind="punchLabel"></span>
+            </button>
+            <button type="button" class="link-btn" data-action="punch-at" data-show="punchAtLabel" data-bind="punchAtLabel"></button>
+          </div>
+
+          <div id="leave-plan" class="leave-plan" aria-live="polite"></div>
+          <div id="today-status" class="now__quick"></div>
+        </div>
+
+        <div id="alerts" class="stack"></div>
+
+        <article id="month-card" class="card month-card" aria-label="This month"></article>
+
+        <button type="button" class="btn btn--block btn--ghost" data-action="open-day-form">+ Add or fix a day</button>
+      </section>
+
+      <!-- ============ History ============ -->
+      <section id="tab-history" class="tab" data-tab="history" aria-labelledby="history-title" hidden>
+        <header class="tab__header">
+          <h2 id="history-title" class="tab__title">History</h2>
+          <button type="button" class="btn btn--pill btn--small" data-action="open-day-form">+ Add day</button>
+        </header>
+
+        <div class="cluster">
+          <label for="month-select" class="text-dim text-small">Month</label>
+          <select id="month-select" class="select"></select>
+        </div>
+        <article id="month-summary" class="card" aria-label="Month summary"></article>
+
+        <section class="section" aria-labelledby="charts-heading">
+          <div class="cluster cluster--between">
+            <h3 id="charts-heading">Charts</h3>
+            <div id="chart-group" class="seg" role="group" aria-label="Chart grouping"></div>
+          </div>
+          <div id="charts" class="stack"></div>
+        </section>
+
+        <section class="section" aria-labelledby="days-heading">
+          <div class="cluster cluster--between">
+            <h3 id="days-heading">Days</h3>
+            <div id="history-filter" class="seg" role="group" aria-label="History filter"></div>
+          </div>
+          <div class="cluster history__meta">
+            <span id="history-caption" class="text-dim text-small"></span>
+            <span class="cluster push" id="year-filter">
+              <label for="year-select" class="text-dim text-small">Year</label>
+              <select id="year-select" class="select"></select>
+            </span>
+          </div>
+          <div id="history" class="history__list"></div>
+          <p id="history-empty" class="empty" hidden></p>
+        </section>
+      </section>
+
+      <!-- ============ Settings ============ -->
+      <section id="tab-settings" class="tab" data-tab="settings" aria-labelledby="settings-title" hidden>
+        <header class="tab__header">
+          <h2 id="settings-title" class="tab__title">Settings</h2>
+        </header>
+
+        <section class="card settings__group" aria-labelledby="s-theme-heading">
+          <h3 id="s-theme-heading" class="settings__heading">Appearance</h3>
+          <div id="s-theme" class="seg seg--full" role="group" aria-labelledby="s-theme-heading"></div>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-target-heading">
+          <h3 id="s-target-heading" class="settings__heading">Daily target</h3>
+          <div class="cluster">
+            <input
+              id="target-input"
+              class="input input--compact"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              aria-labelledby="s-target-heading"
+            />
+            <span class="text-dim text-small">hours per office day, on average</span>
+          </div>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-grouping-heading">
+          <h3 id="s-grouping-heading" class="settings__heading">Month grouping</h3>
+          <div id="s-grouping" class="seg seg--full" role="group" aria-labelledby="s-grouping-heading"></div>
+          <p class="field__hint">Tracking month puts a week that straddles two months in the earlier month, like the timesheet.</p>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-rounding-heading">
+          <h3 id="s-rounding-heading" class="settings__heading">Timesheet rounding</h3>
+          <p class="field__hint">On a 15-minute grid. Custom rounds down within the grace, otherwise up.</p>
+          <div id="s-round-in" class="settings__rule"></div>
+          <div id="s-round-out" class="settings__rule"></div>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-check-heading">
+          <h3 id="s-check-heading" class="settings__heading">Rounding check</h3>
+          <div id="s-check"></div>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-holidays-heading">
+          <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
+          <p class="field__hint">One per line: <code>2026-11-26 Thanksgiving</code></p>
+          <textarea
+            id="s-holidays"
+            class="textarea"
+            rows="6"
+            data-bind="holidayText"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            aria-labelledby="s-holidays-heading"
+          ></textarea>
+          <div class="cluster">
+            <button type="button" class="btn btn--fit" data-action="save-holidays">Save holidays</button>
+            <span class="text-dim text-small" role="status" data-bind="holidayMessage"></span>
+          </div>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-backup-heading">
+          <h3 id="s-backup-heading" class="settings__heading">Backup</h3>
+          <p class="field__hint" data-bind="backupInfo"></p>
+          <div class="cluster">
+            <button type="button" class="btn" data-action="export">Export JSON</button>
+            <button type="button" class="btn" data-action="import">Import JSON</button>
+            <input id="import-file" type="file" accept=".json,application/json,text/plain" hidden />
+          </div>
+          <p class="field__hint" data-bind="storageInfo"></p>
+        </section>
+
+        <section class="card settings__group" aria-labelledby="s-danger-heading">
+          <h3 id="s-danger-heading" class="settings__heading">Danger zone</h3>
+          <button type="button" class="btn btn--danger-outline btn--block" data-action="erase">Erase all data on this device</button>
+          <p class="field__hint text-center" data-bind="versionInfo"></p>
+        </section>
+      </section>
+    </main>
+
+    <!-- ============ Bottom navigation ============ -->
+    <nav class="tabbar" aria-label="Main">
+      <a class="tabbar__item" href="#home" data-tab-link="home">
+        <svg class="tabbar__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+        </svg>
+        <span>Home</span>
+      </a>
+      <a class="tabbar__item" href="#history" data-tab-link="history">
+        <svg class="tabbar__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
+        </svg>
+        <span>History</span>
+      </a>
+      <a class="tabbar__item" href="#settings" data-tab-link="settings">
+        <svg class="tabbar__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.2" />
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+          />
+        </svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <!-- ============ Punch time: set clock-in / clock-out ============ -->
+    <dialog id="punch-dialog" class="sheet" aria-labelledby="punch-title">
+      <form id="punch-form" class="sheet__body" novalidate>
+        <header class="sheet__head">
+          <h2 id="punch-title" class="sheet__title" data-bind="title"></h2>
+          <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
+        </header>
+        <p class="text-dim text-small" data-bind="context"></p>
+
+        <div class="field">
+          <label class="field__label" for="p-time" data-bind="label"></label>
+          <input id="p-time" class="input input--time-lg" type="time" data-bind="time" required />
+        </div>
+        <div id="p-nudges" class="cluster nudges" role="group" aria-label="Adjust by"></div>
+        <p class="field__hint tabular" data-bind="preview"></p>
+
+        <p class="form-error" role="alert" data-bind="error"></p>
+        <div class="sheet__actions">
+          <button type="button" class="btn" data-action="close-dialog">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Day form: add or edit a day ============ -->
+    <dialog id="day-dialog" class="sheet" aria-labelledby="day-title">
+      <form id="day-form" class="sheet__body" novalidate>
+        <header class="sheet__head">
+          <h2 id="day-title" class="sheet__title" data-bind="title"></h2>
+          <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
+        </header>
+
+        <div class="field">
+          <span class="field__label" id="f-date-label">Date</span>
+          <div class="cluster date-row">
+            <div id="f-date-chips" class="seg" role="group" aria-labelledby="f-date-label"></div>
+            <input id="f-date" class="input input--date" type="date" data-bind="date" aria-labelledby="f-date-label" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field__label" id="f-status-label">Day type</span>
+          <div id="f-status" class="seg seg--full" role="group" aria-labelledby="f-status-label"></div>
+        </div>
+
+        <div data-show="showTimes">
+          <div class="field-grid">
+            <div class="field">
+              <label class="field__label" for="f-rstart">Clock in</label>
+              <input id="f-rstart" class="input" type="time" data-bind="rStart" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="f-rend">Clock out</label>
+              <input id="f-rend" class="input" type="time" data-bind="rEnd" />
+            </div>
+          </div>
+          <button type="button" class="chip chip--suggest" data-action="use-usual" data-show="usualLabel" data-bind="usualLabel"></button>
+          <p class="field__hint tabular" data-bind="preview"></p>
+        </div>
+        <p class="field__hint" data-hidden="showTimes" data-bind="statusHint"></p>
+
+        <details class="more" data-open="moreOpen">
+          <summary class="more__summary">More: PTO, timesheet, note</summary>
+
+          <div class="field-grid">
+            <div class="field" data-show="showTimes">
+              <label class="field__label" for="f-rhours">Hours <span class="text-dim">(no times)</span></label>
+              <input
+                id="f-rhours"
+                class="input"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                data-bind="rHours"
+                data-disabled="hoursLocked"
+              />
+            </div>
+            <div class="field" data-show="showPto">
+              <label class="field__label" for="f-rpto">PTO hours</label>
+              <input id="f-rpto" class="input" type="text" inputmode="decimal" autocomplete="off" data-bind="rPto" />
+            </div>
+          </div>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset__legend">Timesheet</legend>
+            <label class="switch">
+              <input class="switch__input" type="checkbox" data-bind="verified" />
+              <span>Verified against the official timesheet</span>
+            </label>
+            <div data-show="verified">
+              <div class="field-grid" data-show="showTimes">
+                <div class="field">
+                  <label class="field__label" for="f-astart">Timesheet in</label>
+                  <input id="f-astart" class="input" type="time" data-bind="aStart" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="f-aend">Timesheet out</label>
+                  <input id="f-aend" class="input" type="time" data-bind="aEnd" />
+                </div>
+              </div>
+              <div class="field-grid">
+                <div class="field" data-show="showTimes">
+                  <label class="field__label" for="f-ahours">Hours</label>
+                  <input
+                    id="f-ahours"
+                    class="input"
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    data-bind="aHours"
+                    placeholder="from times"
+                  />
+                </div>
+                <div class="field" data-show="showPto">
+                  <label class="field__label" for="f-apto">PTO hours</label>
+                  <input id="f-apto" class="input" type="text" inputmode="decimal" autocomplete="off" data-bind="aPto" />
+                </div>
+              </div>
+              <button type="button" class="link-btn" data-action="fill-predicted" data-show="canFill">
+                Fill from my entry (predicted rounding)
+              </button>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label class="field__label" for="f-note">Note</label>
+            <input id="f-note" class="input" type="text" autocomplete="off" data-bind="note" placeholder="Optional" />
+          </div>
+        </details>
+
+        <p class="form-error" role="alert" data-bind="error"></p>
+        <div class="sheet__actions">
+          <button type="button" class="btn" data-action="close-dialog">Cancel</button>
+          <button type="submit" class="btn btn--primary" data-bind="saveLabel"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ============ Check against timesheet ============ -->
+    <dialog id="verify-dialog" class="sheet" aria-labelledby="verify-title">
+      <div class="sheet__body">
+        <header class="sheet__head">
+          <h2 id="verify-title" class="sheet__title">Check against timesheet</h2>
+          <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
+        </header>
+        <div id="verify-body"></div>
+      </div>
+    </dialog>
+
+    <!-- ============ Delete confirmation ============ -->
+    <dialog id="delete-dialog" class="sheet" aria-labelledby="delete-title">
+      <div class="sheet__body">
+        <h2 id="delete-title" class="sheet__title">Delete this day?</h2>
+        <p id="delete-text" class="text-dim"></p>
+        <div class="sheet__actions">
+          <button type="button" class="btn" data-action="close-dialog">Keep</button>
+          <button type="button" class="btn btn--danger" data-action="confirm-delete">Delete</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Top layer (popover) so it shows above open sheets too. -->
+    <div id="toast" class="toast" popover="manual" role="status" aria-live="polite"></div>
+  </body>
+</html>

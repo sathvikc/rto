@@ -1,0 +1,50 @@
+@layer dialogs {
+  /* Native <dialog> shown as a bottom sheet on phones, centered on wider screens. */
+  .sheet {
+    width: min(100% - 1rem, 32.5rem);
+    max-width: 32.5rem;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 1.5rem);
+    margin: auto auto 0;
+    padding: 0;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .sheet::backdrop {
+    background: var(--color-backdrop);
+  }
+
+  @media (min-width: 600px) {
+    .sheet {
+      margin: auto;
+      border-radius: var(--radius-sheet);
+    }
+  }
+
+  .sheet__body {
+    min-width: 0;
+    padding: var(--space-5) 1.125rem calc(env(safe-area-inset-bottom) + 1.375rem);
+  }
+
+  .sheet__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .sheet__title {
+    font-size: var(--text-xl);
+  }
+
+  .sheet__actions {
+    display: flex;
+    gap: 0.625rem;
+    margin-top: 1.125rem;
+  }
+}
