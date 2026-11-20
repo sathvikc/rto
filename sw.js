@@ -1,11 +1,17 @@
 /**
- * Offline support. The app shell is precached on install. After that,
- * same-origin GETs are served from the cache first and refreshed in the
- * background (stale-while-revalidate), so a deploy shows up on the next
- * launch without a version bump. Bump CACHE_NAME after removing or
- * renaming files so stale entries are dropped.
+ * Offline support.
+ *
+ * Install precaches the app shell; every same-origin GET is then served
+ * from the cache and refreshed in the background (stale-while-revalidate).
+ *
+ * Both network paths bypass the browser's HTTP cache. GitHub Pages sends
+ * `Cache-Control: max-age=600`, so a plain fetch() could hand back the
+ * previous deploy for ten minutes and fill a new cache with old files.
+ * `reload` always fetches fresh; `no-cache` revalidates (cheap 304s).
+ *
+ * Bump CACHE_NAME on every release that changes shipped files.
  */
-const CACHE_NAME = "rto-v5";
+const CACHE_NAME = "rto-v6";
 
 const APP_SHELL = [
   "./",
@@ -42,6 +48,7 @@ const APP_SHELL = [
   "src/js/ui/dom.js",
   "src/js/ui/tabs.js",
   "src/js/ui/theme.js",
+  "src/js/ui/updates.js",
   "src/js/ui/components/bar-chart.js",
   "src/js/ui/views/alerts.js",
   "src/js/ui/views/charts.js",
@@ -66,7 +73,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => cache.addAll(APP_SHELL.map((url) => new Request(url, { cache: "reload" }))))
       .then(() => self.skipWaiting()),
   );
 });
@@ -98,7 +105,7 @@ async function staleWhileRevalidate(event, request) {
   const key = request.mode === "navigate" ? "index.html" : request;
   const cached = await cache.match(key, { ignoreSearch: request.mode === "navigate" });
 
-  const network = fetch(request)
+  const network = fetch(request.url, { cache: "no-cache" })
     .then((response) => {
       if (response.ok && response.type === "basic") cache.put(key, response.clone());
 

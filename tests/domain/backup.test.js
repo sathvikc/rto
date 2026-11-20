@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_SETTINGS } from "../../src/js/domain/constants.js";
-import { buildBackup, holidaysToText, mergeDays, parseHolidays, parseImport, replaceHolidaysForYear } from "../../src/js/domain/backup.js";
+import {
+  backupFileName,
+  buildBackup,
+  holidaysToText,
+  mergeDays,
+  parseHolidays,
+  parseImport,
+  replaceHolidaysForYear,
+} from "../../src/js/domain/backup.js";
 import { office } from "../helpers.js";
 
 describe("parseImport", () => {
@@ -103,4 +111,9 @@ test("import merge: the file wins on the same date, other local days are kept", 
   );
 
   assert.deepEqual([added, replaced], [1, 1]);
+});
+
+test("backup file name has the local date and time", () => {
+  assert.equal(backupFileName(new Date(2026, 10, 20, 15, 32)), "rto-backup-2026-11-20-1532.json");
+  assert.equal(backupFileName(new Date(2026, 0, 5, 9, 4)), "rto-backup-2026-01-05-0904.json");
 });
