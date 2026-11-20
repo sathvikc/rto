@@ -9,7 +9,9 @@ import { formatDay, formatHours, formatTime, monthName, plural } from "../../lib
 import { model } from "../../state/model.js";
 import { data, toggleMatch, ui, verifyAsPredicted } from "../../state/store.js";
 import { registerActions } from "../actions.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { actionButton, DAY_BUTTON, editDayButton } from "../components/button.js";
+import { byId, html, render } from "../dom.js";
 
 /** @import { Day, Settings } from "../../domain/types.js" */
 /** @import { HistoryFilter } from "../../state/store.js" */
@@ -88,25 +90,21 @@ function dayCard(day, settings, today) {
       <p class="day-card__times">${timeLine}</p>
       ${r.total !== null ? html`<span class="day-card__hours">${formatHours(r.total)}${star}</span>` : star}
     </div>
-    ${details.map((d) => html`<p class="text-dim text-small">${d}</p>`)}
+    ${details.map((d) => html`<p class="caption">${d}</p>`)}
     ${day.note && day.status !== "holiday" && html`<p class="day-card__note text-small">${day.note}</p>`}
     <div class="cluster day-card__actions">
-      <button type="button" class="btn btn--pill btn--small" data-action="edit-day" data-date="${day.date}">Edit</button>
+      ${editDayButton(day.date)}
       ${
         isPast &&
         canToggleMatch(day) &&
-        html`<button
-          type="button"
-          class="btn btn--pill btn--small btn--toggle"
-          aria-pressed="${String(r.verified)}"
-          data-action="toggle-match"
-          data-date="${day.date}"
-          title="${r.verified ? "Matches the timesheet. Tap to undo." : "Mark as matching the timesheet"}"
-        >
-          ${r.verified ? "✓ Matched" : "Matches?"}
-        </button>`
+        actionButton(r.verified ? "✓ Matched" : "Matches?", "toggle-match", {
+          className: `${DAY_BUTTON} btn--toggle`,
+          date: day.date,
+          pressed: r.verified,
+          title: r.verified ? "Matches the timesheet. Tap to undo." : "Mark as matching the timesheet",
+        })
       }
-      <button type="button" class="btn btn--pill btn--small text-danger" data-action="ask-delete" data-date="${day.date}">Delete</button>
+      ${actionButton("Delete", "ask-delete", { className: `${DAY_BUTTON} text-danger`, date: day.date })}
     </div>`;
 }
 
@@ -128,7 +126,7 @@ export function mountHistory() {
       const { filter, yearSel, today } = ui;
       const { selKey } = model;
 
-      render(filterEl, html`${segmentButtons(FILTER_OPTIONS, filter, "history-filter")}`);
+      render(filterEl, segmentButtons(FILTER_OPTIONS, filter, "history-filter"));
 
       const years = [...new Set(days.map((d) => d.date.slice(0, 4)))].sort().reverse();
       const fallbackYear = (selKey || today).slice(0, 4);

@@ -7,7 +7,8 @@ import { model } from "../../state/model.js";
 import { data, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { statGrid } from "../components/stat-grid.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { byId, html, render } from "../dom.js";
 
 export function mountMonthSummary() {
   const group = createCleanupGroup();
@@ -37,14 +38,14 @@ export function mountMonthSummary() {
 
       render(
         viewToggle,
-        html`${segmentButtons(
+        segmentButtons(
           [
             ["all", "All days"],
             ["verified", "Verified only"],
           ],
           verifiedOnly ? "verified" : "all",
           "data-view",
-        )}`,
+        ),
       );
 
       // In the dashboard view, covered days you haven't matched yet count as
@@ -52,7 +53,7 @@ export function mountMonthSummary() {
       const pending = verifiedOnly ? model.toVerify.filter((d) => groupKey(d.date, data.settings.grouping) === selKey).length : 0;
 
       const pendingNote = pending
-        ? html`<p class="text-dim text-small">
+        ? html`<p class="caption">
             <span class="star">*</span> ${plural(pending, "day")} through ${formatDay(coverage, { year: false })} not matched yet; counted
             as absent here. <button type="button" class="link-btn" data-action="open-verify">Review</button>
           </p>`
@@ -83,23 +84,21 @@ export function mountMonthSummary() {
 
       render(
         summary,
-        html`<p class="text-dim text-small">
+        html`<p class="caption">
             ${selKey === currentKey ? "This month" : monthName(selKey)} · ${grouping}
             month${verifiedOnly ? ` · verified, through ${formatDay(coverage, { year: false })}` : ""}
           </p>
           <p class="figure">${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && html`<sup class="star">*</sup>`}</p>
-          <p class="text-dim text-small">${verdict}</p>
+          <p class="caption">${verdict}</p>
           ${statGrid([
             { label: "Office days", value: st?.counted ?? 0 },
             { label: "Presence", value: formatPercent(st?.presencePct) },
             { label: "WFH", value: st?.wfh ?? 0 },
           ])}
-          ${!!st?.denom && html`<p class="text-dim text-small">${st.present} of ${st.denom} weekdays present in the weeks logged.</p>`}
+          ${!!st?.denom && html`<p class="caption">${st.present} of ${st.denom} weekdays present in the weeks logged.</p>`}
           ${
             !!st?.unverified &&
-            html`<p class="text-dim text-small">
-              <span class="star">*</span> ${plural(st.unverified, "day")} not verified against the timesheet.
-            </p>`
+            html`<p class="caption"><span class="star">*</span> ${plural(st.unverified, "day")} not verified against the timesheet.</p>`
           }
           ${pendingNote} ${compare}`,
       );

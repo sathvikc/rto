@@ -82,12 +82,12 @@
 
       <!-- ============ History ============ -->
       <section id="tab-history" class="tab" data-tab="history" aria-labelledby="history-title" hidden>
-        <header class="tab__header">
+        <header class="tab__header cluster cluster--between">
           <h2 id="history-title" class="tab__title">History</h2>
           <button type="button" class="btn btn--pill btn--small" data-action="open-day-form">+ Add day</button>
         </header>
 
-        <div class="history__controls">
+        <div class="cluster history__controls">
           <label for="month-select" class="visually-hidden">Month</label>
           <select id="month-select" class="select"></select>
           <div id="data-view" class="seg" role="group" aria-label="Which days to include"></div>
@@ -108,20 +108,20 @@
             <div id="history-filter" class="seg" role="group" aria-label="History filter"></div>
           </div>
           <div class="cluster history__meta">
-            <span id="history-caption" class="text-dim text-small"></span>
+            <span id="history-caption" class="caption"></span>
             <span class="cluster push" id="year-filter">
-              <label for="year-select" class="text-dim text-small">Year</label>
+              <label for="year-select" class="caption">Year</label>
               <select id="year-select" class="select"></select>
             </span>
           </div>
-          <div id="history" class="history__list"></div>
+          <div id="history" class="stack"></div>
           <p id="history-empty" class="empty" hidden></p>
         </section>
       </section>
 
       <!-- ============ Settings ============ -->
       <section id="tab-settings" class="tab" data-tab="settings" aria-labelledby="settings-title" hidden>
-        <header class="tab__header">
+        <header class="tab__header cluster cluster--between">
           <h2 id="settings-title" class="tab__title">Settings</h2>
         </header>
 
@@ -141,7 +141,7 @@
               autocomplete="off"
               aria-labelledby="s-target-heading"
             />
-            <span class="text-dim text-small">hours per office day, on average</span>
+            <span class="caption">hours per office day, on average</span>
           </div>
         </section>
 
@@ -166,7 +166,7 @@
         <section class="card settings__group" aria-labelledby="s-holidays-heading">
           <h3 id="s-holidays-heading" class="settings__heading" data-bind="holidayTitle">Company holidays</h3>
           <p class="field__hint">Tap a date to change it. Past years stay in History.</p>
-          <ul id="holiday-list" class="holiday-list" aria-labelledby="s-holidays-heading"></ul>
+          <ul id="holiday-list" class="stack holiday-list" aria-labelledby="s-holidays-heading"></ul>
           <div class="cluster cluster--end">
             <button type="button" class="btn btn--fit" data-action="add-holiday">+ Add holiday</button>
           </div>
@@ -300,11 +300,11 @@
     <!-- ============ Punch time: set clock-in / clock-out ============ -->
     <dialog id="punch-dialog" class="sheet" aria-labelledby="punch-title">
       <form id="punch-form" class="sheet__body" novalidate>
-        <header class="sheet__head">
+        <header class="sheet__head cluster cluster--between">
           <h2 id="punch-title" class="sheet__title" data-bind="title"></h2>
           <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
         </header>
-        <p class="text-dim text-small" data-bind="context"></p>
+        <p class="caption" data-bind="context"></p>
 
         <div class="field">
           <label class="field__label" for="p-time" data-bind="label"></label>
@@ -324,7 +324,7 @@
     <!-- ============ Day form: add or edit a day ============ -->
     <dialog id="day-dialog" class="sheet" aria-labelledby="day-title">
       <form id="day-form" class="sheet__body" novalidate>
-        <header class="sheet__head">
+        <header class="sheet__head cluster cluster--between">
           <h2 id="day-title" class="sheet__title" data-bind="title"></h2>
           <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
         </header>
@@ -395,7 +395,7 @@
           </div>
 
           <fieldset class="fieldset" data-show="canVerify">
-            <legend class="fieldset__legend">Timesheet</legend>
+            <legend class="fieldset__legend eyebrow">Timesheet</legend>
             <label class="switch">
               <input class="switch__input" type="checkbox" data-bind="verified" />
               <span>Verified against the official timesheet</span>
@@ -452,7 +452,7 @@
     <!-- ============ Check against timesheet ============ -->
     <dialog id="verify-dialog" class="sheet" aria-labelledby="verify-title">
       <div class="sheet__body">
-        <header class="sheet__head">
+        <header class="sheet__head cluster cluster--between">
           <h2 id="verify-title" class="sheet__title">Check against timesheet</h2>
           <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
         </header>

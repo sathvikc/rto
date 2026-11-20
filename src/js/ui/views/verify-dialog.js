@@ -9,6 +9,7 @@ import { model } from "../../state/model.js";
 import { data, verifyAsPredicted } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { closeDialogs, openDialog } from "../dialogs.js";
+import { actionButton, DAY_BUTTON, editDayButton } from "../components/button.js";
 import { byId, html, render } from "../dom.js";
 
 /** @import { Day, Settings } from "../../domain/types.js" */
@@ -27,7 +28,7 @@ function summary(day, settings) {
     const p = predictEntry(rec, settings);
 
     return html`${formatTime(p?.start)} → ${formatTime(p?.end)} · <strong>${formatHours(p?.hours)}</strong><br />
-      <span class="text-dim text-small">you: ${formatTime(rec.start)} → ${formatTime(rec.end)}</span>`;
+      <span class="caption">you: ${formatTime(rec.start)} → ${formatTime(rec.end)}</span>`;
   }
 
   return html`${r.total === null ? "No hours" : formatHours(r.total)}`;
@@ -63,26 +64,22 @@ export function mountVerifyDialog() {
             Timesheet through <strong>${through}</strong>. Tap <strong>Matches</strong> when it shows the predicted values, or
             <strong>Edit</strong> to type what it really says. Differences feed the rounding check in Settings.
           </p>
-          <ul class="verify-list">
+          <ul class="stack verify-list">
             ${toVerify.map(
               (day) =>
-                html`<li class="verify-list__row">
+                html`<li class="cluster cluster--between verify-list__row">
                   <div class="verify-list__info">
                     <strong>${formatDay(day.date, { year: false })}</strong>
                     <p class="text-small">${summary(day, settings)}</p>
                   </div>
                   <div class="cluster">
-                    <button type="button" class="btn btn--pill btn--small" data-action="edit-day" data-date="${day.date}">Edit</button>
-                    <button type="button" class="btn btn--pill btn--small btn--primary" data-action="verify-day" data-date="${day.date}">
-                      Matches
-                    </button>
+                    ${editDayButton(day.date)}
+                    ${actionButton("Matches", "verify-day", { className: `${DAY_BUTTON} btn--primary`, date: day.date })}
                   </div>
                 </li>`,
             )}
           </ul>
-          <button type="button" class="btn btn--primary btn--block" data-action="verify-all">
-            All ${toVerify.length} match the timesheet
-          </button>`,
+          ${actionButton(`All ${toVerify.length} match the timesheet`, "verify-all", { className: "btn btn--primary btn--block" })}`,
       );
     }),
   );

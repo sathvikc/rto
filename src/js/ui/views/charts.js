@@ -7,7 +7,8 @@ import { model } from "../../state/model.js";
 import { ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { barChart } from "../components/bar-chart.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { byId, html, render } from "../dom.js";
 
 /** @import { MonthStat } from "../../domain/types.js" */
 /** @import { ChartGroup } from "../../state/store.js" */
@@ -62,7 +63,7 @@ export function mountCharts() {
       const { historyStats: stats, selKey, currentKey } = model;
       const mode = ui.chartGroup;
 
-      render(toggle, html`${segmentButtons(GROUP_OPTIONS, mode, "chart-group")}`);
+      render(toggle, segmentButtons(GROUP_OPTIONS, mode, "chart-group"));
 
       const year = (selKey || currentKey).slice(0, 4);
       const points = mode === "year" ? byYear(stats) : byMonth(stats, year);
@@ -89,7 +90,7 @@ export function mountCharts() {
               points.map((p) => ({ label: p.label, value: p.pct, text: p.pct === null ? "" : `${p.pct}%`, faded: p.partial })),
               { max: 112, color: "var(--color-info)", label: `Presence percent ${scope}` },
             )}
-            <p class="text-dim text-small">Faded bar = month in progress.</p>
+            <p class="caption">Faded bar = month in progress.</p>
           </figure>`,
       );
     }),

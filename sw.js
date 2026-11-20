@@ -11,7 +11,7 @@
  *
  * Bump CACHE_NAME on every release that changes shipped files.
  */
-const CACHE_NAME = "rto-v7";
+const CACHE_NAME = "rto-v8";
 
 const APP_SHELL = [
   "./",
@@ -50,7 +50,10 @@ const APP_SHELL = [
   "src/js/ui/tabs.js",
   "src/js/ui/theme.js",
   "src/js/ui/updates.js",
+  "src/js/ui/components/banner.js",
   "src/js/ui/components/bar-chart.js",
+  "src/js/ui/components/button.js",
+  "src/js/ui/components/segmented.js",
   "src/js/ui/components/stat-grid.js",
   "src/js/ui/views/alerts.js",
   "src/js/ui/views/charts.js",

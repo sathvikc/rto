@@ -11,7 +11,8 @@ import { model } from "../../state/model.js";
 import { data, deleteDay, findDay, predictedTimesheet, saveDay, toast, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { closeDialogs, openDialog } from "../dialogs.js";
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { byId, render } from "../dom.js";
 
 /** @import { DayStatus, Entry } from "../../domain/types.js" */
 
@@ -95,21 +96,21 @@ export function mountDayDialog() {
       const { status, rStart, rEnd, rHours, rPto } = form;
       const { settings } = data;
 
-      render(statusEl, html`${segmentButtons(STATUS_OPTIONS, status, "day-status")}`);
+      render(statusEl, segmentButtons(STATUS_OPTIONS, status, "day-status"));
 
       const today = ui.today;
       const yesterday = addDays(today, -1);
 
       render(
         dateChips,
-        html`${segmentButtons(
+        segmentButtons(
           [
             [today, "Today"],
             [yesterday, "Yesterday"],
           ],
           form.date,
           "day-date",
-        )}`,
+        ),
       );
 
       const office = status === "office";

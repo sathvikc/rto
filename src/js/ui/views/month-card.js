@@ -6,6 +6,7 @@ import { model } from "../../state/model.js";
 import { data, updateSettings } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { statGrid } from "../components/stat-grid.js";
+import { actionButton } from "../components/button.js";
 import { byId, html, render } from "../dom.js";
 
 const MAX_WORKDAYS = 31;
@@ -44,9 +45,9 @@ export function mountMonthCard() {
 
     render(
       card,
-      html`<header class="month-card__head">
+      html`<header class="cluster cluster--between cluster--baseline">
           <h2 class="month-card__title">${monthName(currentKey)}</h2>
-          <button type="button" class="link-btn text-small" data-action="go-history">Details</button>
+          ${actionButton("Details", "go-history", { className: "link-btn text-small" })}
         </header>
 
         ${statGrid([
@@ -59,34 +60,27 @@ export function mountMonthCard() {
           { label: "Office days", value: st?.counted ?? 0 },
         ])}
 
-        <div class="month-card__needed">
+        <div class="cluster cluster--between cluster--top month-card__needed">
           <div>
-            <p class="text-dim text-small">Needed per day</p>
+            <p class="caption">Needed per day</p>
             <p class="figure">${formatHours(needed, 1)}</p>
           </div>
           <div class="text-end">
-            <p class="text-dim text-small">Office days left</p>
+            <p class="caption">Office days left</p>
             <div class="stepper">
-              <button type="button" class="icon-btn icon-btn--small" data-action="workdays-dec" aria-label="Fewer office days left">
-                −
-              </button>
+              ${actionButton("−", "workdays-dec", { className: "icon-btn icon-btn--small", label: "Fewer office days left" })}
               <output class="stepper__value" aria-live="polite">${left}</output>
-              <button type="button" class="icon-btn icon-btn--small" data-action="workdays-inc" aria-label="More office days left">
-                +
-              </button>
+              ${actionButton("+", "workdays-inc", { className: "icon-btn icon-btn--small", label: "More office days left" })}
             </div>
-            ${
-              overridden &&
-              html`<button type="button" class="link-btn text-small" data-action="workdays-reset">Reset to ${autoLeft}</button>`
-            }
+            ${overridden && actionButton(`Reset to ${autoLeft}`, "workdays-reset", { className: "link-btn text-small" })}
           </div>
         </div>
 
-        <p class="text-dim text-small">
+        <p class="caption">
           ${left > 0 ? `To finish at ${target}h over ${plural(left, "more office day")}.` : "No office days left this month."}
           ${!!st?.unverifiedAvg && html` <span class="star">*</span> ${plural(st.unverifiedAvg, "day")} not verified.`}
         </p>
-        ${spillNote && html`<p class="text-dim text-small">${spillNote}</p>`}`,
+        ${spillNote && html`<p class="caption">${spillNote}</p>`}`,
     );
   });
 }

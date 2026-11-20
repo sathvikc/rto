@@ -7,6 +7,7 @@ import { createCleanupGroup } from "lume-js/addons";
 import { model } from "../../state/model.js";
 import { dismissToast, ui, undoLastPunch } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { actionButton } from "../components/button.js";
 import { byId, html, render } from "../dom.js";
 import { openPunchDialog } from "./punch-dialog.js";
 
@@ -29,7 +30,7 @@ export function mountToast() {
       render(
         el,
         html`<span class="toast__message">${message}</span>
-          ${toastActions.map((a) => html`<button type="button" class="toast__action" data-action="toast-${a}">${LABELS[a]}</button>`)}`,
+          ${toastActions.map((a) => actionButton(LABELS[a], `toast-${a}`, { className: "toast__action" }))}`,
       );
 
       if (!supportsPopover) {

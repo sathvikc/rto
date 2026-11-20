@@ -15,6 +15,7 @@ import { formatClock, formatDay, formatHours, formatLongDate, formatTime, plural
 import { model } from "../../state/model.js";
 import { clockIn, clockOut, data, flush, setTodayStatus, toast, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { actionButton } from "../components/button.js";
 import { byId, html, render, trusted } from "../dom.js";
 import { openPunchDialog } from "./punch-dialog.js";
 
@@ -165,12 +166,12 @@ export function mountNow() {
       const ARROW = { 1: "▲", 0: "=", [-1]: "▼" };
       const CLASS = { 1: "leave-table__avg--ok", 0: "leave-table__avg--ok", [-1]: "leave-table__avg--below" };
 
-      plan.markup = html`<div class="leave-plan__head">
+      plan.markup = html`<div class="cluster cluster--between cluster--baseline leave-plan__head">
           <span>If you leave…</span>
           <span>Month avg so far <strong>${formatHours(currentAvg, 2)}</strong></span>
         </div>
         <table class="leave-table">
-          <thead>
+          <thead class="eyebrow">
             <tr>
               <th scope="col">Leave</th>
               <th scope="col">Today</th>
@@ -222,17 +223,17 @@ export function mountNow() {
       }
 
       if (todayDay && todayDay.status !== "office") {
-        plan.quick = html`<span class="text-dim text-small">Marked ${STATUS_LABEL[todayDay.status]} today.</span>
-          <button type="button" class="link-btn" data-action="today-status" data-value="office">Undo</button>`.value;
+        plan.quick = html`<span class="caption">Marked ${STATUS_LABEL[todayDay.status]} today.</span>
+          ${actionButton("Undo", "today-status", { className: "link-btn", value: "office" })}`.value;
 
         return;
       }
 
       const late = isWeekday(ui.today) && minutesOf(now) >= LATE_PROMPT_MINUTES;
 
-      plan.quick = html`<span class="text-dim text-small">${late ? "Not clocked in yet." : "Not in the office today?"}</span>
+      plan.quick = html`<span class="caption">${late ? "Not clocked in yet." : "Not in the office today?"}</span>
         <span class="cluster">
-          ${QUICK_STATUSES.map((s) => html`<button type="button" class="chip" data-action="today-status" data-value="${s}">${STATUS_LABEL[s]}</button>`)}
+          ${QUICK_STATUSES.map((s) => actionButton(STATUS_LABEL[s], "today-status", { className: "chip", value: s }))}
         </span>`.value;
     }),
   );

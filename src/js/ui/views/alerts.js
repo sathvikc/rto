@@ -5,8 +5,12 @@ import { daysSince, formatDay, formatTime, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { data } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { banner } from "../components/banner.js";
+import { actionButton } from "../components/button.js";
 import { byId, html, render } from "../dom.js";
 import { openPunchDialog } from "./punch-dialog.js";
+
+const PILL = "btn btn--pill";
 
 export function mountAlerts() {
   const root = byId("alerts");
@@ -23,38 +27,29 @@ export function mountAlerts() {
       html`${
         staleShift &&
         openDay &&
-        html`<div class="banner banner--warn">
-          <div>
-            <p class="banner__title">Forgot to clock out?</p>
-            <p class="text-dim text-small">
-              Clocked in ${formatDay(openDay.date, { year: false })} at ${formatTime(openDay.recorded?.start)}. Set when you left.
-            </p>
-          </div>
-          <button type="button" class="btn btn--pill btn--primary" data-action="fix-stale-shift">Set time</button>
-        </div>`
+        banner({
+          tone: "warn",
+          title: "Forgot to clock out?",
+          text: `Clocked in ${formatDay(openDay.date, { year: false })} at ${formatTime(openDay.recorded?.start)}. Set when you left.`,
+          action: actionButton("Set time", "fix-stale-shift", { className: `${PILL} btn--primary` }),
+        })
       }
       ${
         toVerify.length > 0 &&
-        html`<div class="banner">
-          <div>
-            <p class="banner__title">${plural(toVerify.length, "day")} to check</p>
-            <p class="text-dim text-small">
-              Timesheet is out through
-              ${formatDay(coverage, { year: false })}.${laterUnverified > 0 && ` ${plural(laterUnverified, "newer day")} later.`}
-            </p>
-          </div>
-          <button type="button" class="btn btn--pill" data-action="open-verify">Review</button>
-        </div>`
+        banner({
+          title: `${plural(toVerify.length, "day")} to check`,
+          text: `Timesheet is out through ${formatDay(coverage, { year: false })}.${laterUnverified > 0 ? ` ${plural(laterUnverified, "newer day")} later.` : ""}`,
+          action: actionButton("Review", "open-verify", { className: PILL }),
+        })
       }
       ${
         needsBackup &&
-        html`<div class="banner banner--muted">
-          <div>
-            <p class="banner__title">${lastExportAt ? `Last backup ${daysSince(lastExportAt)} days ago` : "No backup yet"}</p>
-            <p class="text-dim text-small">Data lives only on this device.</p>
-          </div>
-          <button type="button" class="btn btn--pill" data-action="export">Export</button>
-        </div>`
+        banner({
+          tone: "muted",
+          title: lastExportAt ? `Last backup ${daysSince(lastExportAt)} days ago` : "No backup yet",
+          text: "Data lives only on this device.",
+          action: actionButton("Export", "export", { className: PILL }),
+        })
       }`,
     );
   });

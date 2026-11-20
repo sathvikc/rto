@@ -57,8 +57,13 @@
     color: inherit;
   }
 
-  button {
+  button,
+  summary {
     cursor: pointer;
+  }
+
+  summary {
+    font-weight: 600;
   }
 
   code {

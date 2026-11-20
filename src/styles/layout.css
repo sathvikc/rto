@@ -9,10 +9,6 @@
 
   /* ---- Tabs ---- */
   .tab__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
     margin-block: var(--space-2) var(--space-4);
   }
 
@@ -47,6 +43,10 @@
     justify-content: flex-end;
   }
 
+  .cluster--center {
+    justify-content: center;
+  }
+
   .cluster--top {
     align-items: flex-start;
   }
@@ -58,6 +58,12 @@
   .stack {
     display: flex;
     flex-direction: column;
+  }
+
+  /* A list laid out as a stack is a component, not prose: no bullets. */
+  .stack:is(ul, ol) {
+    padding: 0;
+    list-style: none;
   }
 
   .push {
@@ -139,21 +145,13 @@
   /* Month picker + All days / Verified only: one row, wrapping on narrow
      screens. The select's height is matched in forms.css. */
   .history__controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
   }
 
   .history__meta {
     margin-top: var(--space-3);
-    min-height: 2.375rem;
-  }
-
-  .history__list {
-    display: flex;
-    flex-direction: column;
+    min-height: var(--control-md);
   }
 
   @media (max-width: 360px) {

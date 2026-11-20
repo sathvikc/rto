@@ -29,7 +29,9 @@ import {
 import { APP_VERSION } from "../../version.js";
 import { registerActions } from "../actions.js";
 
-import { byId, html, render, segmentButtons } from "../dom.js";
+import { segmentButtons } from "../components/segmented.js";
+import { actionButton } from "../components/button.js";
+import { byId, html, render } from "../dom.js";
 import { theme } from "../theme.js";
 
 /** @import { Grouping, RoundingMode, RoundingRule } from "../../domain/types.js" */
@@ -70,7 +72,7 @@ function ruleBlock(side, rule) {
     ${
       rule.mode === "custom" &&
       html`<div class="cluster settings__grace">
-        <label class="text-dim text-small" for="grace-${side}">Grace</label>
+        <label class="caption" for="grace-${side}">Grace</label>
         <select id="grace-${side}" class="select" data-grace="${side}">
           ${Array.from({ length: STEP_MINUTES }, (_, i) => html`<option value="${i}" ${i === grace ? "selected" : ""}>${i} min</option>`)}
         </select>
@@ -120,7 +122,7 @@ export function mountSettings() {
 
   group.add(
     effect(() => {
-      render(byId("s-theme"), html`${segmentButtons(THEME_OPTIONS, theme.pref, "theme")}`);
+      render(byId("s-theme"), segmentButtons(THEME_OPTIONS, theme.pref, "theme"));
     }),
   );
 
@@ -128,7 +130,7 @@ export function mountSettings() {
     effect(() => {
       const { grouping, roundIn, roundOut } = data.settings;
 
-      render(byId("s-grouping"), html`${segmentButtons(GROUPING_OPTIONS, grouping, "grouping")}`);
+      render(byId("s-grouping"), segmentButtons(GROUPING_OPTIONS, grouping, "grouping"));
       render(byId("s-round-in"), ruleBlock("roundIn", roundIn));
       render(byId("s-round-out"), ruleBlock("roundOut", roundOut));
     }),
@@ -232,7 +234,7 @@ export function mountSettings() {
 
     return html`<li class="holiday-row${d.date < ui.today ? " holiday-row--past" : ""}">
       <label class="holiday-row__tile">
-        <span class="holiday-row__month">${monthShort(month - 1)}</span>
+        <span class="holiday-row__month eyebrow">${monthShort(month - 1)}</span>
         <span class="holiday-row__date">${day}</span>
         <!-- Invisible native picker over the tile: tap it to change the date. -->
         <input
@@ -259,15 +261,7 @@ export function mountSettings() {
           ${weekdayShort(real)}${d.observedFrom && html` · <span class="holiday-row__observed">observed ${formatDay(d.date, { year: false })}</span>`}
         </span>
       </span>
-      <button
-        type="button"
-        class="icon-btn icon-btn--small icon-btn--ghost"
-        data-action="delete-holiday"
-        data-date="${d.date}"
-        aria-label="Delete ${d.note ?? real}"
-      >
-        ×
-      </button>
+      ${actionButton("×", "delete-holiday", { className: "icon-btn icon-btn--small icon-btn--ghost", date: d.date, label: `Delete ${d.note ?? real}` })}
     </li>`;
   };
 
@@ -291,18 +285,11 @@ export function mountSettings() {
         holidayList,
         list.length
           ? html`${list.map(holidayRow)}`
-          : html`<li class="holiday-list__empty">
+          : html`<li class="empty empty--compact">
               <p>No holidays for ${thisYear()} yet.</p>
-              <div class="cluster holiday-list__actions">
-                ${
-                  offer &&
-                  html`<button type="button" class="btn btn--fit btn--primary" data-action="copy-holidays">
-                    Copy ${offer.from} holidays
-                  </button>`
-                }
-                <button type="button" class="btn btn--fit${offer ? "" : " btn--primary"}" data-action="add-us-holidays">
-                  Add US holidays
-                </button>
+              <div class="cluster cluster--center">
+                ${offer && actionButton(`Copy ${offer.from} holidays`, "copy-holidays", { className: "btn btn--fit btn--primary" })}
+                ${actionButton("Add US holidays", "add-us-holidays", { className: `btn btn--fit${offer ? "" : " btn--primary"}` })}
               </div>
               <p class="field__hint">US federal holidays for ${thisYear()}; then delete any your company doesn't give.</p>
             </li>`,
