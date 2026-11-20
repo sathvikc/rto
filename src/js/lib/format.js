@@ -1,5 +1,6 @@
 /** Display formatting. Pure functions, en-US. */
 import { pad2, parseDateKey } from "../domain/dates.js";
+import { timeOf } from "../domain/time.js";
 
 const LOCALE = "en-US";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -58,11 +59,13 @@ export function formatDay(key, { year = true } = {}) {
 export const formatLongDate = (d) => d.toLocaleDateString(LOCALE, { weekday: "long", month: "short", day: "numeric" });
 
 /** @param {Date} d  "10:05 AM" */
-export function formatClock(d) {
-  const h = d.getHours();
+export const formatClock = (d) => formatTime(timeOf(d));
 
-  return `${h % 12 === 0 ? 12 : h % 12}:${pad2(d.getMinutes())} ${h >= 12 ? "PM" : "AM"}`;
-}
+/**
+ * "83%"; null -> "—".
+ * @param {number | null | undefined} pct
+ */
+export const formatPercent = (pct) => (pct === null || pct === undefined ? "—" : `${pct}%`);
 
 /** @param {string} iso */
 export const formatShortDate = (iso) => new Date(iso).toLocaleDateString(LOCALE, { month: "short", day: "numeric", year: "numeric" });
@@ -95,9 +98,6 @@ export function formatDateRange(from, to) {
 
   return `${month(from)} ${day(from)} – ${month(to)} ${day(to)}`;
 }
-
-/** "2026-11-26" -> "Nov 26" @param {string} key */
-export const shortDate = (key) => parseDateKey(key).toLocaleDateString(LOCALE, { month: "short", day: "numeric" });
 
 /** "2026-11-26" -> "Thu" @param {string} key */
 export const weekdayShort = (key) => parseDateKey(key).toLocaleDateString(LOCALE, { weekday: "short" });

@@ -181,7 +181,7 @@ export function dismissToast() {
 /** @param {string} date */
 export const findDay = (date) => data.days.find((d) => d.date === date) ?? null;
 
-export const findOpenDay = () => data.days.find(isOpen) ?? null;
+const findOpenDay = () => data.days.find(isOpen) ?? null;
 
 /**
  * Insert or replace a day. `replaceDate` removes the old record when an
@@ -205,6 +205,26 @@ export function saveDay(day, replaceDate = null) {
   const rest = data.days.filter((d) => d.date !== clean.date && d.date !== replaceDate);
 
   data.days = newestFirst([...rest, clean]);
+}
+
+/**
+ * Merge days into the store (same date replaced), stamped as updated now.
+ * @param {Day[]} incoming
+ * @returns {{ added: number, replaced: number }}
+ */
+function mergeIntoDays(incoming) {
+  if (!incoming.length) return { added: 0, replaced: 0 };
+
+  const at = new Date().toISOString();
+
+  const merged = mergeDays(
+    data.days,
+    incoming.map((d) => ({ ...d, updatedAt: at })),
+  );
+
+  data.days = merged.days;
+
+  return { added: merged.added, replaced: merged.replaced };
 }
 
 /** @param {string} date */
@@ -461,14 +481,9 @@ export function updateHoliday(recordDate, change) {
  * @returns {number} how many were added
  */
 export function addHolidays(holidays) {
-  const at = new Date().toISOString();
   const { days, added } = holidaysAsDays(data.days, holidays);
 
-  if (added)
-    data.days = mergeDays(
-      data.days,
-      days.map((d) => (d.updatedAt ? d : { ...d, updatedAt: at })),
-    ).days;
+  if (added) mergeIntoDays(days.filter((d) => !d.updatedAt));
 
   return added;
 }
@@ -482,14 +497,7 @@ export function addHolidays(holidays) {
 export function copyHolidaysToYear(fromYear, toYear) {
   const added = copyHolidays(data.days, fromYear, toYear);
 
-  if (added.length) {
-    const at = new Date().toISOString();
-
-    data.days = mergeDays(
-      data.days,
-      added.map((d) => ({ ...d, updatedAt: at })),
-    ).days;
-  }
+  mergeIntoDays(added);
 
   return added.length;
 }
@@ -523,12 +531,8 @@ export function importBackup(json) {
   if (!imp.days.length) throw new Error("No days found in that file.");
 
   // The file wins: its days replace local days with the same date.
-  const at = new Date().toISOString();
   const today = toDateKey(new Date());
-  const incoming = imp.days.map((d) => unverifyFuture({ ...d, updatedAt: at }, today));
-  const merged = mergeDays(data.days, incoming);
-
-  data.days = merged.days;
+  const merged = mergeIntoDays(imp.days.map((d) => unverifyFuture(d, today)));
 
   updateSettings(imp.settings);
 

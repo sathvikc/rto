@@ -51,6 +51,7 @@ const APP_SHELL = [
   "src/js/ui/theme.js",
   "src/js/ui/updates.js",
   "src/js/ui/components/bar-chart.js",
+  "src/js/ui/components/stat-grid.js",
   "src/js/ui/views/alerts.js",
   "src/js/ui/views/charts.js",
   "src/js/ui/views/day-dialog.js",

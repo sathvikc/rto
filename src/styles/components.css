@@ -76,6 +76,13 @@
     line-height: 1;
   }
 
+  /* No border or fill: for low-emphasis actions like a row's delete. */
+  .icon-btn--ghost {
+    border-color: transparent;
+    background: none;
+    color: var(--color-text-dim);
+  }
+
   .icon-btn--small {
     width: 2.25rem;
     height: 2.25rem;
@@ -100,16 +107,6 @@
     font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 3px;
-  }
-
-  .round-btn {
-    width: 2.375rem;
-    height: 2.375rem;
-    border: 1px solid var(--color-border);
-    border-radius: 50%;
-    background: var(--color-surface);
-    font-size: var(--text-xl);
-    line-height: 1;
   }
 
   .chip {
@@ -378,13 +375,6 @@
     margin-top: var(--space-1);
   }
 
-  .card__footer {
-    flex-wrap: nowrap;
-    margin-top: 0.875rem;
-    padding-top: 0.875rem;
-    border-top: 1px solid var(--color-border);
-  }
-
   .figure {
     margin-block: var(--space-1) 6px;
     font-size: var(--text-figure);
@@ -618,8 +608,7 @@
   }
 
   /* ---- Settings ---- */
-  .settings__group .seg + .field__hint,
-  .settings__group .textarea {
+  .settings__group .seg + .field__hint {
     margin-top: var(--space-2);
   }
 
@@ -763,17 +752,6 @@
     color: var(--color-holiday);
   }
 
-  .holiday-row__delete {
-    width: 2rem;
-    height: 2rem;
-    border: 0;
-    border-radius: 50%;
-    background: none;
-    color: var(--color-text-dim);
-    font-size: 1.25rem;
-    line-height: 1;
-  }
-
   .settings__rule {
     margin-top: var(--space-4);
   }
@@ -791,10 +769,10 @@
     max-width: calc(100% - 2rem);
     margin: 0;
     padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
-    border: 0;
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-pill);
-    background: var(--color-text);
-    color: var(--color-bg);
+    background: var(--color-surface-2);
+    color: var(--color-text);
     font-size: var(--text-sm);
     font-weight: 600;
     box-shadow: var(--shadow-toast);
@@ -821,8 +799,8 @@
     padding: 0 var(--space-3);
     border: 0;
     border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--color-bg) 18%, transparent);
-    color: inherit;
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    color: var(--color-accent);
     font-weight: 700;
   }
 }

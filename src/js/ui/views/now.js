@@ -7,7 +7,7 @@ import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { classToggle, show } from "lume-js/handlers";
 import { STATUS_LABEL } from "../../domain/constants.js";
-import { isWeekday, toDateKey } from "../../domain/dates.js";
+import { isWeekday, pad2, toDateKey } from "../../domain/dates.js";
 import { resolveDay } from "../../domain/days.js";
 import { leaveRows } from "../../domain/shift.js";
 import { toMinutes } from "../../domain/time.js";
@@ -54,7 +54,7 @@ export function mountNow() {
 
       view.dateLine = formatLongDate(now);
       view.clockText = formatClock(now);
-      view.secondsText = String(now.getSeconds()).padStart(2, "0");
+      view.secondsText = pad2(now.getSeconds());
 
       if (open?.recorded?.start && !model.staleShift) {
         const overnight = open.date === toDateKey(now) ? 0 : 1440;
@@ -167,7 +167,7 @@ export function mountNow() {
 
       plan.markup = html`<div class="leave-plan__head">
           <span>If you leave…</span>
-          <span>Month avg so far <strong>${currentAvg === null ? "—" : formatHours(currentAvg, 2)}</strong></span>
+          <span>Month avg so far <strong>${formatHours(currentAvg, 2)}</strong></span>
         </div>
         <table class="leave-table">
           <thead>

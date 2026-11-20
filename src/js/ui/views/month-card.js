@@ -1,10 +1,11 @@
 /** Home: the current month at a glance, and the average still needed. */
 import { effect } from "lume-js";
 import { startOfWeekSunday } from "../../domain/dates.js";
-import { formatDateRange, formatDay, formatHours, monthLong, monthName, plural } from "../../lib/format.js";
+import { formatDateRange, formatDay, formatHours, formatPercent, monthLong, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { data, updateSettings } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { statGrid } from "../components/stat-grid.js";
 import { byId, html, render } from "../dom.js";
 
 const MAX_WORKDAYS = 31;
@@ -48,34 +49,31 @@ export function mountMonthCard() {
           <button type="button" class="link-btn text-small" data-action="go-history">Details</button>
         </header>
 
-        <dl class="stat-grid">
-          <div class="stat-grid__item">
-            <dt>Average</dt>
-            <dd class="${onTrack ? "text-ok" : ""}">
-              ${st?.avg == null ? "—" : formatHours(st.avg, 1)}${st?.unverifiedAvg ? html`<sup class="star">*</sup>` : ""}
-            </dd>
-          </div>
-          <div class="stat-grid__item">
-            <dt>Presence</dt>
-            <dd>${st?.presencePct == null ? "—" : `${st.presencePct}%`}</dd>
-          </div>
-          <div class="stat-grid__item">
-            <dt>Office days</dt>
-            <dd>${st?.counted ?? 0}</dd>
-          </div>
-        </dl>
+        ${statGrid([
+          {
+            label: "Average",
+            value: html`${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && html`<sup class="star">*</sup>`}`,
+            className: onTrack ? "text-ok" : "",
+          },
+          { label: "Presence", value: formatPercent(st?.presencePct) },
+          { label: "Office days", value: st?.counted ?? 0 },
+        ])}
 
         <div class="month-card__needed">
           <div>
             <p class="text-dim text-small">Needed per day</p>
-            <p class="figure">${needed === null ? "—" : formatHours(needed, 1)}</p>
+            <p class="figure">${formatHours(needed, 1)}</p>
           </div>
           <div class="text-end">
             <p class="text-dim text-small">Office days left</p>
             <div class="stepper">
-              <button type="button" class="round-btn" data-action="workdays-dec" aria-label="Fewer office days left">−</button>
+              <button type="button" class="icon-btn icon-btn--small" data-action="workdays-dec" aria-label="Fewer office days left">
+                −
+              </button>
               <output class="stepper__value" aria-live="polite">${left}</output>
-              <button type="button" class="round-btn" data-action="workdays-inc" aria-label="More office days left">+</button>
+              <button type="button" class="icon-btn icon-btn--small" data-action="workdays-inc" aria-label="More office days left">
+                +
+              </button>
             </div>
             ${
               overridden &&

@@ -2,10 +2,11 @@
 import { batch, effect } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
 import { groupKey } from "../../domain/dates.js";
-import { formatDay, formatHours, monthName, plural } from "../../lib/format.js";
+import { formatDay, formatHours, formatPercent, monthName, plural } from "../../lib/format.js";
 import { model } from "../../state/model.js";
 import { data, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
+import { statGrid } from "../components/stat-grid.js";
 import { byId, html, render, segmentButtons } from "../dom.js";
 
 export function mountMonthSummary() {
@@ -64,8 +65,8 @@ export function mountMonthSummary() {
       const compare =
         differs && other
           ? html`<p class="compare">
-              ${otherLabel}: <strong>${other.avg == null ? "—" : formatHours(other.avg, 1)}</strong> avg ·
-              <strong>${other.presencePct == null ? "—" : `${other.presencePct}%`}</strong> presence
+              ${otherLabel}: <strong>${formatHours(other.avg, 1)}</strong> avg ·
+              <strong>${formatPercent(other.presencePct)}</strong> presence
             </p>`
           : "";
 
@@ -86,22 +87,13 @@ export function mountMonthSummary() {
             ${selKey === currentKey ? "This month" : monthName(selKey)} · ${grouping}
             month${verifiedOnly ? ` · verified, through ${formatDay(coverage, { year: false })}` : ""}
           </p>
-          <p class="figure">${st?.avg == null ? "—" : formatHours(st.avg, 1)}${st?.unverifiedAvg ? html`<sup class="star">*</sup>` : ""}</p>
+          <p class="figure">${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && html`<sup class="star">*</sup>`}</p>
           <p class="text-dim text-small">${verdict}</p>
-          <dl class="stat-grid">
-            <div class="stat-grid__item">
-              <dt>Office days</dt>
-              <dd>${st?.counted ?? 0}</dd>
-            </div>
-            <div class="stat-grid__item">
-              <dt>Presence</dt>
-              <dd>${st?.presencePct == null ? "—" : `${st.presencePct}%`}</dd>
-            </div>
-            <div class="stat-grid__item">
-              <dt>WFH</dt>
-              <dd>${st?.wfh ?? 0}</dd>
-            </div>
-          </dl>
+          ${statGrid([
+            { label: "Office days", value: st?.counted ?? 0 },
+            { label: "Presence", value: formatPercent(st?.presencePct) },
+            { label: "WFH", value: st?.wfh ?? 0 },
+          ])}
           ${!!st?.denom && html`<p class="text-dim text-small">${st.present} of ${st.denom} weekdays present in the weeks logged.</p>`}
           ${
             !!st?.unverified &&

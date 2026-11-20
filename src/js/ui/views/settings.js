@@ -261,7 +261,7 @@ export function mountSettings() {
       </span>
       <button
         type="button"
-        class="holiday-row__delete"
+        class="icon-btn icon-btn--small icon-btn--ghost"
         data-action="delete-holiday"
         data-date="${d.date}"
         aria-label="Delete ${d.note ?? real}"

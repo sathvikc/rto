@@ -5,7 +5,7 @@ import { graceOf, roundMinutes } from "./rounding.js";
 import { fromMinutes, isTime, spanHours, toMinutes } from "./time.js";
 
 /** Open shifts older than this are treated as a forgotten clock-out. */
-export const STALE_SHIFT_HOURS = 14;
+const STALE_SHIFT_HOURS = 14;
 
 const MINUTES_PER_DAY = 1440;
 

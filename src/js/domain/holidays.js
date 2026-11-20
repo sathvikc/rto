@@ -7,7 +7,7 @@
  * date in `observedFrom`.
  */
 /** @import { Day, Holiday } from "./types.js" */
-import { addDays, isDateKey, weekday } from "./dates.js";
+import { addDays, isDateKey, toDateKey, weekday } from "./dates.js";
 import { isBlankDay } from "./days.js";
 
 const SATURDAY = 6;
@@ -108,7 +108,7 @@ export function holidaysAsDays(days, holidays) {
  * @param {Day[]} days
  * @param {string} from "YYYY-MM-DD"
  */
-export const holidaysFrom = (days, from) =>
+const holidaysFrom = (days, from) =>
   days.filter((d) => d.status === "holiday" && holidayDateOf(d) >= from).sort((a, b) => holidayDateOf(a).localeCompare(holidayDateOf(b)));
 
 /**
@@ -159,15 +159,13 @@ export function copyHolidays(days, fromYear, toYear) {
 export function nthWeekday(year, month, dow, n) {
   if (n > 0) {
     const first = new Date(year, month - 1, 1).getDay();
-    const day = 1 + ((dow - first + 7) % 7) + (n - 1) * 7;
 
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return toDateKey(new Date(year, month - 1, 1 + ((dow - first + 7) % 7) + (n - 1) * 7));
   }
 
-  const lastDate = new Date(year, month, 0);
-  const day = lastDate.getDate() - ((lastDate.getDay() - dow + 7) % 7);
+  const last = new Date(year, month, 0);
 
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return toDateKey(new Date(year, month - 1, last.getDate() - ((last.getDay() - dow + 7) % 7)));
 }
 
 /**
