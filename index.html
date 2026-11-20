@@ -82,10 +82,9 @@
 
       <!-- ============ History ============ -->
       <section id="tab-history" class="tab" data-tab="history" aria-labelledby="history-title" hidden>
-        <header class="tab__header cluster cluster--between">
-          <h2 id="history-title" class="tab__title">History</h2>
+        <ui-tab-header heading="History" heading-id="history-title">
           <button type="button" class="btn btn--pill btn--small" data-action="open-day-form">+ Add day</button>
-        </header>
+        </ui-tab-header>
 
         <div class="cluster history__controls">
           <label for="month-select" class="visually-hidden">Month</label>
@@ -115,23 +114,19 @@
             </span>
           </div>
           <div id="history" class="stack"></div>
-          <p id="history-empty" class="empty" hidden></p>
+          <div id="history-empty"></div>
         </section>
       </section>
 
       <!-- ============ Settings ============ -->
       <section id="tab-settings" class="tab" data-tab="settings" aria-labelledby="settings-title" hidden>
-        <header class="tab__header cluster cluster--between">
-          <h2 id="settings-title" class="tab__title">Settings</h2>
-        </header>
+        <ui-tab-header heading="Settings" heading-id="settings-title"></ui-tab-header>
 
-        <section class="card settings__group" aria-labelledby="s-theme-heading">
-          <h3 id="s-theme-heading" class="settings__heading">Appearance</h3>
+        <ui-setting heading="Appearance" heading-id="s-theme-heading">
           <div id="s-theme" class="seg seg--full" role="group" aria-labelledby="s-theme-heading"></div>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-target-heading">
-          <h3 id="s-target-heading" class="settings__heading">Daily target</h3>
+        <ui-setting heading="Daily target" heading-id="s-target-heading">
           <div class="cluster">
             <input
               id="target-input"
@@ -143,38 +138,33 @@
             />
             <span class="caption">hours per office day, on average</span>
           </div>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-grouping-heading">
-          <h3 id="s-grouping-heading" class="settings__heading">Month grouping</h3>
+        <ui-setting heading="Month grouping" heading-id="s-grouping-heading">
           <div id="s-grouping" class="seg seg--full" role="group" aria-labelledby="s-grouping-heading"></div>
           <p class="field__hint">Tracking month puts a week that straddles two months in the earlier month, like the timesheet.</p>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-rounding-heading">
-          <h3 id="s-rounding-heading" class="settings__heading">Timesheet rounding</h3>
+        <ui-setting heading="Timesheet rounding" heading-id="s-rounding-heading">
           <p class="field__hint">On a 15-minute grid. Custom rounds down within the grace, otherwise up.</p>
           <div id="s-round-in" class="settings__rule"></div>
           <div id="s-round-out" class="settings__rule"></div>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-check-heading">
-          <h3 id="s-check-heading" class="settings__heading">Rounding check</h3>
+        <ui-setting heading="Rounding check" heading-id="s-check-heading">
           <div id="s-check"></div>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-holidays-heading">
-          <h3 id="s-holidays-heading" class="settings__heading" data-bind="holidayTitle">Company holidays</h3>
+        <ui-setting heading="Company holidays" heading-id="s-holidays-heading" heading-bind="holidayTitle">
           <p class="field__hint">Tap a date to change it. Past years stay in History.</p>
           <ul id="holiday-list" class="stack holiday-list" aria-labelledby="s-holidays-heading"></ul>
           <div class="cluster cluster--end">
             <button type="button" class="btn btn--fit" data-action="add-holiday">+ Add holiday</button>
           </div>
           <p class="field__hint" data-bind="holidaySummary"></p>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-backup-heading">
-          <h3 id="s-backup-heading" class="settings__heading">Backup</h3>
+        <ui-setting heading="Backup" heading-id="s-backup-heading">
           <p class="field__hint" data-bind="backupInfo"></p>
           <div class="cluster">
             <button type="button" class="btn" data-action="export">Export JSON</button>
@@ -182,30 +172,25 @@
             <input id="import-file" type="file" accept=".json,application/json,text/plain" hidden />
           </div>
           <p class="field__hint" data-bind="storageInfo"></p>
-        </section>
+        </ui-setting>
 
-        <section class="card settings__group help" aria-labelledby="s-help-heading">
-          <h3 id="s-help-heading" class="settings__heading">How it works</h3>
-
-          <details class="help__item">
-            <summary>Clocking in and out</summary>
+        <ui-setting heading="How it works" heading-id="s-help-heading" variant="help">
+          <ui-help summary="Clocking in and out">
             <p>
               Tap the big button when you arrive and when you leave. Forgot? Use <b>Set the time</b> under the button, or tap the "Started
               …" line to correct it. Every punch can be undone from the message that pops up.
             </p>
             <p>A shift still open from an earlier day asks when you left, so a forgotten clock-out never becomes a 20-hour day.</p>
-          </details>
+          </ui-help>
 
-          <details class="help__item">
-            <summary>Leave-by panel</summary>
+          <ui-help summary="Leave-by panel">
             <p>
               While you're on the clock, Home shows when to leave for three goals (now, on pace for the month, a full day), with today's
               timesheet hours and what your month average becomes for each. A tip says when the next quarter hour gets credited.
             </p>
-          </details>
+          </ui-help>
 
-          <details class="help__item">
-            <summary>Day types and PTO</summary>
+          <ui-help summary="Day types and PTO">
             <p>
               <b>Office</b> counts toward presence and your average (work + PTO). For a partial day off, keep Office and add the PTO hours.
             </p>
@@ -213,10 +198,9 @@
               <b>OOO</b> and <b>Sick</b>: full day out. They count as present but aren't part of your average. <b>WFH</b>: not present, not
               in your average.
             </p>
-          </details>
+          </ui-help>
 
-          <details class="help__item">
-            <summary>Timesheet check and Matches</summary>
+          <ui-help summary="Timesheet check and Matches">
             <p>
               Your punches are a prediction until the official timesheet confirms them. Unverified office days show
               <span class="star">*</span>.
@@ -227,19 +211,17 @@
               and Sick days need no check.
             </p>
             <p>History → <b>Verified only</b> shows the numbers from confirmed days alone, to compare with the official dashboard.</p>
-          </details>
+          </ui-help>
 
-          <details class="help__item">
-            <summary>Rounding</summary>
+          <ui-help summary="Rounding">
             <p>
               Times round to a 15-minute grid. <b>Custom</b> rounds down when you're at most "grace" minutes past the quarter, otherwise up.
               With a 4-minute grace, 4:16–4:19 counts as 4:15 and 4:20 counts as 4:30. The <b>Rounding check</b> below compares predictions
               with verified days and suggests a grace that fits.
             </p>
-          </details>
+          </ui-help>
 
-          <details class="help__item">
-            <summary>Months, presence and days left</summary>
+          <ui-help summary="Months, presence and days left">
             <p>
               <b>Tracking month</b> puts a week that straddles two months in the earlier month (a week starting Nov 29 belongs to November),
               like the timesheet. <b>Calendar month</b> uses each day's own month.
@@ -253,112 +235,77 @@
               Presence = present days ÷ weekdays in the weeks you logged, not counting company holidays. "Office days left" skips weekends,
               holidays and days already marked WFH, OOO or Sick.
             </p>
-          </details>
+          </ui-help>
 
-          <details class="help__item">
-            <summary>Your data</summary>
+          <ui-help summary="Your data">
             <p>
               Everything stays on this device: there's no account or server. Export a backup now and then. Import merges by date, and days
               in the file replace the same dates here.
             </p>
-          </details>
-        </section>
+          </ui-help>
+        </ui-setting>
 
-        <section class="card settings__group" aria-labelledby="s-danger-heading">
-          <h3 id="s-danger-heading" class="settings__heading">Danger zone</h3>
+        <ui-setting heading="Danger zone" heading-id="s-danger-heading">
           <button type="button" class="btn btn--danger-outline btn--block" data-action="erase">Erase all data on this device</button>
           <p class="field__hint text-center" data-bind="versionInfo"></p>
-        </section>
+        </ui-setting>
       </section>
     </main>
 
     <!-- ============ Bottom navigation ============ -->
     <nav class="tabbar" aria-label="Main">
-      <a class="tabbar__item" href="#home" data-tab-link="home">
-        <svg class="tabbar__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
-        </svg>
-        <span>Home</span>
-      </a>
-      <a class="tabbar__item" href="#history" data-tab-link="history">
-        <svg class="tabbar__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
-        </svg>
-        <span>History</span>
-      </a>
-      <a class="tabbar__item" href="#settings" data-tab-link="settings">
-        <svg class="tabbar__icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="3.2" />
-          <path
-            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-          />
-        </svg>
-        <span>Settings</span>
-      </a>
+      <ui-tab-link tab="home" label="Home"></ui-tab-link>
+      <ui-tab-link tab="history" label="History"></ui-tab-link>
+      <ui-tab-link tab="settings" label="Settings"></ui-tab-link>
     </nav>
 
     <!-- ============ Punch time: set clock-in / clock-out ============ -->
     <dialog id="punch-dialog" class="sheet" aria-labelledby="punch-title">
       <form id="punch-form" class="sheet__body" novalidate>
-        <header class="sheet__head cluster cluster--between">
-          <h2 id="punch-title" class="sheet__title" data-bind="title"></h2>
-          <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
-        </header>
+        <ui-sheet-head heading-id="punch-title" heading-bind="title"></ui-sheet-head>
         <p class="caption" data-bind="context"></p>
 
-        <div class="field">
-          <label class="field__label" for="p-time" data-bind="label"></label>
+        <ui-field label-bind="label">
           <input id="p-time" class="input input--time-lg" type="time" data-bind="time" required />
-        </div>
+        </ui-field>
         <div id="p-nudges" class="cluster nudges" role="group" aria-label="Adjust by"></div>
         <p class="field__hint tabular" data-bind="preview"></p>
 
         <p class="form-error" role="alert" data-bind="error"></p>
-        <div class="sheet__actions">
-          <button type="button" class="btn" data-action="close-dialog">Cancel</button>
-          <button type="submit" class="btn btn--primary">Save</button>
-        </div>
+        <ui-sheet-actions primary="Save"></ui-sheet-actions>
       </form>
     </dialog>
 
     <!-- ============ Day form: add or edit a day ============ -->
     <dialog id="day-dialog" class="sheet" aria-labelledby="day-title">
       <form id="day-form" class="sheet__body" novalidate>
-        <header class="sheet__head cluster cluster--between">
-          <h2 id="day-title" class="sheet__title" data-bind="title"></h2>
-          <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
-        </header>
+        <ui-sheet-head heading-id="day-title" heading-bind="title"></ui-sheet-head>
 
-        <div class="field">
-          <span class="field__label" id="f-date-label">Date</span>
+        <ui-field label="Date">
           <div class="cluster date-row">
-            <div id="f-date-chips" class="seg" role="group" aria-labelledby="f-date-label"></div>
-            <input id="f-date" class="input input--date" type="date" data-bind="date" aria-labelledby="f-date-label" required />
+            <div id="f-date-chips" class="seg" role="group"></div>
+            <input id="f-date" class="input input--date" type="date" data-bind="date" required />
           </div>
-        </div>
+        </ui-field>
 
-        <div class="field">
-          <span class="field__label" id="f-status-label">Day type</span>
-          <div id="f-status" class="seg seg--full" role="group" aria-labelledby="f-status-label"></div>
-        </div>
+        <ui-field label="Day type">
+          <div id="f-status" class="seg seg--full" role="group"></div>
+        </ui-field>
 
         <div data-show="showTimes">
           <div class="field-grid">
-            <div class="field">
-              <label class="field__label" for="f-rstart">Clock in</label>
+            <ui-field label="Clock in">
               <input id="f-rstart" class="input" type="time" data-bind="rStart" />
-            </div>
-            <div class="field">
-              <label class="field__label" for="f-rend">Clock out</label>
+            </ui-field>
+            <ui-field label="Clock out">
               <input id="f-rend" class="input" type="time" data-bind="rEnd" />
-            </div>
+            </ui-field>
           </div>
           <button type="button" class="chip chip--suggest" data-action="use-usual" data-show="usualLabel" data-bind="usualLabel"></button>
           <p class="field__hint tabular" data-bind="preview"></p>
         </div>
 
-        <div class="field" data-show="showPto">
-          <label class="field__label" for="f-rpto">PTO hours <span class="text-dim" data-bind="ptoLabelHint"></span></label>
+        <ui-field label="PTO hours" note-bind="ptoLabelHint" show="showPto">
           <div class="cluster pto-row">
             <input
               id="f-rpto"
@@ -373,15 +320,14 @@
             <button type="button" class="chip" data-action="set-pto" data-value="4">4h</button>
             <button type="button" class="chip" data-action="set-pto" data-value="">None</button>
           </div>
-        </div>
+        </ui-field>
         <p class="field__hint" data-bind="statusHint"></p>
 
         <details class="more" data-open="moreOpen">
           <summary class="more__summary" data-bind="moreLabel"></summary>
 
           <div class="field-grid">
-            <div class="field" data-show="showTimes">
-              <label class="field__label" for="f-rhours">Hours <span class="text-dim">(no times)</span></label>
+            <ui-field label="Hours" note="(no times)" show="showTimes">
               <input
                 id="f-rhours"
                 class="input"
@@ -391,7 +337,7 @@
                 data-bind="rHours"
                 data-disabled="hoursLocked"
               />
-            </div>
+            </ui-field>
           </div>
 
           <fieldset class="fieldset" data-show="canVerify">
@@ -402,18 +348,15 @@
             </label>
             <div data-show="verified">
               <div class="field-grid" data-show="showTimes">
-                <div class="field">
-                  <label class="field__label" for="f-astart">Timesheet in</label>
+                <ui-field label="Timesheet in">
                   <input id="f-astart" class="input" type="time" data-bind="aStart" />
-                </div>
-                <div class="field">
-                  <label class="field__label" for="f-aend">Timesheet out</label>
+                </ui-field>
+                <ui-field label="Timesheet out">
                   <input id="f-aend" class="input" type="time" data-bind="aEnd" />
-                </div>
+                </ui-field>
               </div>
               <div class="field-grid">
-                <div class="field" data-show="showTimes">
-                  <label class="field__label" for="f-ahours">Hours</label>
+                <ui-field label="Hours" show="showTimes">
                   <input
                     id="f-ahours"
                     class="input"
@@ -423,11 +366,10 @@
                     data-bind="aHours"
                     placeholder="from times"
                   />
-                </div>
-                <div class="field" data-show="showPto">
-                  <label class="field__label" for="f-apto">PTO hours</label>
+                </ui-field>
+                <ui-field label="PTO hours" show="showPto">
                   <input id="f-apto" class="input" type="text" inputmode="decimal" autocomplete="off" data-bind="aPto" />
-                </div>
+                </ui-field>
               </div>
               <button type="button" class="link-btn" data-action="fill-predicted" data-show="canFill">
                 Fill from my entry (predicted rounding)
@@ -435,27 +377,20 @@
             </div>
           </fieldset>
 
-          <div class="field">
-            <label class="field__label" for="f-note">Note</label>
+          <ui-field label="Note">
             <input id="f-note" class="input" type="text" autocomplete="off" data-bind="note" placeholder="Optional" />
-          </div>
+          </ui-field>
         </details>
 
         <p class="form-error" role="alert" data-bind="error"></p>
-        <div class="sheet__actions">
-          <button type="button" class="btn" data-action="close-dialog">Cancel</button>
-          <button type="submit" class="btn btn--primary" data-bind="saveLabel"></button>
-        </div>
+        <ui-sheet-actions primary-bind="saveLabel"></ui-sheet-actions>
       </form>
     </dialog>
 
     <!-- ============ Check against timesheet ============ -->
     <dialog id="verify-dialog" class="sheet" aria-labelledby="verify-title">
       <div class="sheet__body">
-        <header class="sheet__head cluster cluster--between">
-          <h2 id="verify-title" class="sheet__title">Check against timesheet</h2>
-          <button type="button" class="icon-btn icon-btn--small" data-action="close-dialog" aria-label="Close">×</button>
-        </header>
+        <ui-sheet-head heading-id="verify-title" heading="Check against timesheet"></ui-sheet-head>
         <div id="verify-body"></div>
       </div>
     </dialog>
@@ -465,10 +400,7 @@
       <div class="sheet__body">
         <h2 id="delete-title" class="sheet__title">Delete this day?</h2>
         <p id="delete-text" class="text-dim"></p>
-        <div class="sheet__actions">
-          <button type="button" class="btn" data-action="close-dialog">Keep</button>
-          <button type="button" class="btn btn--danger" data-action="confirm-delete">Delete</button>
-        </div>
+        <ui-sheet-actions cancel="Keep" primary="Delete" primary-action="confirm-delete" danger></ui-sheet-actions>
       </div>
     </dialog>
 

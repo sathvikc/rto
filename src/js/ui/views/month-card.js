@@ -7,6 +7,7 @@ import { data, updateSettings } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { statGrid } from "../components/stat-grid.js";
 import { actionButton } from "../components/button.js";
+import { starNote, unverifiedMark } from "../components/star.js";
 import { byId, html, render } from "../dom.js";
 
 const MAX_WORKDAYS = 31;
@@ -53,7 +54,7 @@ export function mountMonthCard() {
         ${statGrid([
           {
             label: "Average",
-            value: html`${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && html`<sup class="star">*</sup>`}`,
+            value: html`${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && unverifiedMark()}`,
             className: onTrack ? "text-ok" : "",
           },
           { label: "Presence", value: formatPercent(st?.presencePct) },
@@ -78,7 +79,7 @@ export function mountMonthCard() {
 
         <p class="caption">
           ${left > 0 ? `To finish at ${target}h over ${plural(left, "more office day")}.` : "No office days left this month."}
-          ${!!st?.unverifiedAvg && html` <span class="star">*</span> ${plural(st.unverifiedAvg, "day")} not verified.`}
+          ${!!st?.unverifiedAvg && starNote(`${plural(st.unverifiedAvg, "day")} not verified.`)}
         </p>
         ${spillNote && html`<p class="caption">${spillNote}</p>`}`,
     );

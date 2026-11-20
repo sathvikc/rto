@@ -29,8 +29,10 @@ import {
 import { APP_VERSION } from "../../version.js";
 import { registerActions } from "../actions.js";
 
-import { segmentButtons } from "../components/segmented.js";
+import { segmentButtons, segmented } from "../components/segmented.js";
 import { actionButton } from "../components/button.js";
+import { emptyState } from "../components/empty-state.js";
+import { selectOptions } from "../components/select-options.js";
 import { byId, html, render } from "../dom.js";
 import { theme } from "../theme.js";
 
@@ -68,13 +70,16 @@ function ruleBlock(side, rule) {
   const grace = graceOf(rule);
 
   return html`<p class="field__label">${label}</p>
-    <div class="seg seg--full" role="group" aria-label="${label} rounding">${segmentButtons(RULE_OPTIONS, rule.mode, side)}</div>
+    ${segmented({ options: RULE_OPTIONS, active: rule.mode, action: side, label: `${label} rounding`, full: true })}
     ${
       rule.mode === "custom" &&
       html`<div class="cluster settings__grace">
         <label class="caption" for="grace-${side}">Grace</label>
         <select id="grace-${side}" class="select" data-grace="${side}">
-          ${Array.from({ length: STEP_MINUTES }, (_, i) => html`<option value="${i}" ${i === grace ? "selected" : ""}>${i} min</option>`)}
+          ${selectOptions(
+            Array.from({ length: STEP_MINUTES }, (_, i) => /** @type {const} */ ([i, `${i} min`])),
+            grace,
+          )}
         </select>
       </div>`
     }
@@ -285,14 +290,14 @@ export function mountSettings() {
         holidayList,
         list.length
           ? html`${list.map(holidayRow)}`
-          : html`<li class="empty empty--compact">
-              <p>No holidays for ${thisYear()} yet.</p>
-              <div class="cluster cluster--center">
-                ${offer && actionButton(`Copy ${offer.from} holidays`, "copy-holidays", { className: "btn btn--fit btn--primary" })}
-                ${actionButton("Add US holidays", "add-us-holidays", { className: `btn btn--fit${offer ? "" : " btn--primary"}` })}
-              </div>
-              <p class="field__hint">US federal holidays for ${thisYear()}; then delete any your company doesn't give.</p>
-            </li>`,
+          : emptyState({
+              tag: "li",
+              compact: true,
+              text: `No holidays for ${thisYear()} yet.`,
+              actions: html`${offer && actionButton(`Copy ${offer.from} holidays`, "copy-holidays", { className: "btn btn--fit btn--primary" })}
+              ${actionButton("Add US holidays", "add-us-holidays", { className: `btn btn--fit${offer ? "" : " btn--primary"}` })}`,
+              hint: `US federal holidays for ${thisYear()}; then delete any your company doesn't give.`,
+            }),
       );
 
       const next = list.find((d) => d.date >= ui.today);

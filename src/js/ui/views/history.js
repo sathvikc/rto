@@ -11,6 +11,10 @@ import { data, toggleMatch, ui, verifyAsPredicted } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { segmentButtons } from "../components/segmented.js";
 import { actionButton, DAY_BUTTON, editDayButton } from "../components/button.js";
+import { badge } from "../components/badge.js";
+import { emptyState } from "../components/empty-state.js";
+import { selectOptions } from "../components/select-options.js";
+import { unverifiedMark } from "../components/star.js";
 import { byId, html, render } from "../dom.js";
 
 /** @import { Day, Settings } from "../../domain/types.js" */
@@ -76,14 +80,13 @@ function dayCard(day, settings, today) {
 
   if (r.pto !== null) details.push(`PTO ${formatHours(r.pto)}${r.work !== null ? ` · worked ${formatHours(r.work)}` : ""}`);
 
-  const star = unverified ? html`<sup class="star" title="Not verified">*</sup>` : "";
+  const star = unverified && unverifiedMark();
 
   return html` <div class="cluster cluster--between cluster--top">
       <h3 class="day-card__date">${formatDay(day.date)}</h3>
       <div class="day-card__badges">
-        ${day.date === today && html`<span class="badge">Today</span>`}
-        ${day.status !== "office" && html`<span class="badge badge--${day.status}">${STATUS_LABEL[day.status]}</span>`}
-        ${r.open && html`<span class="badge badge--open">In progress</span>`}
+        ${day.date === today && badge("Today")} ${day.status !== "office" && badge(STATUS_LABEL[day.status], day.status)}
+        ${r.open && badge("In progress", "open")}
       </div>
     </div>
     <div class="cluster cluster--between cluster--baseline">
@@ -134,11 +137,7 @@ export function mountHistory() {
       const year =
         yearSel === "all" || (yearSel && years.includes(yearSel)) ? yearSel : years.includes(fallbackYear) ? fallbackYear : "all";
 
-      render(
-        yearSelect,
-        html`<option value="all">All years</option>
-          ${years.map((y) => html`<option value="${y}">${y}</option>`)}`,
-      );
+      render(yearSelect, selectOptions([["all", "All years"], ...years.map((y) => /** @type {const} */ ([y, y]))]));
 
       yearSelect.value = year;
       yearFilter.hidden = filter !== "all";
@@ -174,8 +173,13 @@ export function mountHistory() {
       }
 
       list.items = rows.map((d) => ({ key: d.date, html: dayCard(d, settings, today) }));
-      empty.hidden = rows.length > 0;
-      empty.textContent = days.length ? "No days in this range." : "Nothing here yet. Clock in, or add a day with Manual entry.";
+
+      render(
+        empty,
+        rows.length
+          ? html``
+          : emptyState({ text: days.length ? "No days in this range." : "Nothing here yet. Clock in, or tap + Add day." }),
+      );
     }),
   );
 

@@ -8,6 +8,9 @@ import { data, ui } from "../../state/store.js";
 import { registerActions } from "../actions.js";
 import { statGrid } from "../components/stat-grid.js";
 import { segmentButtons } from "../components/segmented.js";
+import { actionButton } from "../components/button.js";
+import { selectOptions } from "../components/select-options.js";
+import { starNote, unverifiedMark } from "../components/star.js";
 import { byId, html, render } from "../dom.js";
 
 export function mountMonthSummary() {
@@ -26,7 +29,7 @@ export function mountMonthSummary() {
     effect(() => {
       const { monthKeys, selKey } = model;
 
-      render(select, html`${monthKeys.map((k) => html`<option value="${k}">${monthName(k)}</option>`)}`);
+      render(select, selectOptions(monthKeys.map((k) => /** @type {const} */ ([k, monthName(k)]))));
       select.value = selKey;
     }),
   );
@@ -54,8 +57,8 @@ export function mountMonthSummary() {
 
       const pendingNote = pending
         ? html`<p class="caption">
-            <span class="star">*</span> ${plural(pending, "day")} through ${formatDay(coverage, { year: false })} not matched yet; counted
-            as absent here. <button type="button" class="link-btn" data-action="open-verify">Review</button>
+            ${starNote(`${plural(pending, "day")} through ${formatDay(coverage, { year: false })} not matched yet; counted as absent here.`)}
+            ${actionButton("Review", "open-verify", { className: "link-btn" })}
           </p>`
         : "";
 
@@ -88,7 +91,7 @@ export function mountMonthSummary() {
             ${selKey === currentKey ? "This month" : monthName(selKey)} · ${grouping}
             month${verifiedOnly ? ` · verified, through ${formatDay(coverage, { year: false })}` : ""}
           </p>
-          <p class="figure">${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && html`<sup class="star">*</sup>`}</p>
+          <p class="figure">${formatHours(st?.avg, 1)}${!!st?.unverifiedAvg && unverifiedMark()}</p>
           <p class="caption">${verdict}</p>
           ${statGrid([
             { label: "Office days", value: st?.counted ?? 0 },
@@ -98,7 +101,7 @@ export function mountMonthSummary() {
           ${!!st?.denom && html`<p class="caption">${st.present} of ${st.denom} weekdays present in the weeks logged.</p>`}
           ${
             !!st?.unverified &&
-            html`<p class="caption"><span class="star">*</span> ${plural(st.unverified, "day")} not verified against the timesheet.</p>`
+            html`<p class="caption">${starNote(`${plural(st.unverified, "day")} not verified against the timesheet.`)}</p>`
           }
           ${pendingNote} ${compare}`,
       );

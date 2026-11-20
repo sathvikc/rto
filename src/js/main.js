@@ -5,6 +5,8 @@ import { toDateKey } from "./domain/dates.js";
 import "./state/model.js";
 import { flush, loadState, ui } from "./state/store.js";
 import { listenForActions } from "./ui/actions.js";
+// Expands the <ui-*> components in index.html; must run before views mount.
+import "./ui/elements.js";
 import { setUpDialogs } from "./ui/dialogs.js";
 import { setUpTabs } from "./ui/tabs.js";
 import { setUpTheme } from "./ui/theme.js";

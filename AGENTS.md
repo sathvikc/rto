@@ -30,7 +30,8 @@ src/js/
   state/                 Lume stores, persistence, derived model
   ui/                    DOM helpers, actions, dialogs, tabs, theme
   ui/views/              one module per screen region or sheet (Home, History, Settings tabs)
-  ui/components/         reusable render functions
+  ui/components/         reusable components (props in, markup out)
+  ui/elements.js         <ui-*> custom elements used in index.html
 src/styles/              CSS split by cascade layer
 tests/                   node:test unit tests
 vendor/lume-js/          vendored Lume.js (do not edit)
@@ -40,6 +41,15 @@ docs/screenshots/        README screenshots (generated demo data only)
 ```
 
 Dependencies point inward: `ui` → `state` → `domain`/`lib`. `domain` imports nothing outside itself. `state` never imports from `ui`.
+
+## Components
+
+Repeated markup is a component, in HTML, JS and CSS alike, so one fix applies everywhere.
+
+- **JS templates** use the components in `ui/components/` (`button`, `actionButton`, `segmented`, `banner`, `badge`, `emptyState`, `statGrid`, `chartCard`, `selectOptions`, `icon`, ...). Each takes a props object.
+- **index.html** uses `<ui-*>` elements (`ui-field`, `ui-setting`, `ui-sheet-head`, `ui-sheet-actions`, `ui-tab-header`, `ui-tab-link`, `ui-help`) with props as attributes. They are defined in `ui/elements.js`, build their markup from the same components, and replace themselves on load, so the live DOM is plain HTML.
+- **CSS**: shared patterns are one rule (the pill-control surface, bold tabular numbers, `.eyebrow`, `.empty`), and layout uses the primitives in `layout.css` (`cluster`, `stack`).
+- Need something new? Add a prop to the existing component and use it, rather than copying markup or a rule. Write a new component once a pattern appears a second time, and test it in `tests/ui/`.
 
 ## Code standards
 
