@@ -7,7 +7,7 @@ import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
 import { PRESET_GRACE, graceOf, roundTime } from "../../domain/rounding.js";
 import { roundingCheck } from "../../domain/verification.js";
-import { formatDay, formatShortDate, formatTime, plural } from "../../lib/format.js";
+import { formatDay, formatShortDate, formatTime, plural, shortDate, weekdayShort } from "../../lib/format.js";
 import {
   backupJson,
   data,
@@ -237,9 +237,20 @@ export function mountSettings() {
           ? html`${list.map(
               (d) =>
                 html`<li class="holiday-row">
-                  <input class="input holiday-row__date" type="date" value="${d.date}" data-holiday-date="${d.date}" aria-label="Date" />
+                  <label class="holiday-row__when">
+                    <span class="holiday-row__day">${shortDate(d.date)}</span>
+                    <span class="holiday-row__weekday">${weekdayShort(d.date)}</span>
+                    <!-- Invisible native picker over the date text: tap the date to change it. -->
+                    <input
+                      class="holiday-row__picker"
+                      type="date"
+                      value="${d.date}"
+                      data-holiday-date="${d.date}"
+                      aria-label="Date of ${d.note ?? "holiday"}"
+                    />
+                  </label>
                   <input
-                    class="input holiday-row__name"
+                    class="holiday-row__name"
                     type="text"
                     value="${d.note ?? ""}"
                     data-holiday-name="${d.date}"
@@ -249,7 +260,7 @@ export function mountSettings() {
                   />
                   <button
                     type="button"
-                    class="icon-btn icon-btn--small"
+                    class="holiday-row__delete"
                     data-action="delete-holiday"
                     data-date="${d.date}"
                     aria-label="Delete ${d.note ?? d.date}"

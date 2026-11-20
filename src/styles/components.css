@@ -667,8 +667,7 @@
   .holiday-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    margin: var(--space-3) 0;
+    margin: var(--space-2) 0 var(--space-3);
     padding: 0;
     list-style: none;
   }
@@ -682,31 +681,51 @@
     text-align: center;
   }
 
-  /* Name on top (full width), date below, delete on the right. */
+  /* One compact line per holiday: date (tap to pick) · name · delete. */
   .holiday-row {
     display: grid;
-    grid-template-areas:
-      "name delete"
-      "date delete";
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-1) var(--space-2);
+    grid-template-columns: 4.25rem minmax(0, 1fr) auto;
+    gap: var(--space-2);
     align-items: center;
-    padding: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
+    min-height: var(--tap-min);
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .holiday-row__name {
-    grid-area: name;
+  .holiday-row:last-child {
+    border-bottom: 0;
   }
 
-  .holiday-row__date {
-    grid-area: date;
+  .holiday-row__when {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    cursor: pointer;
   }
 
-  .holiday-row .icon-btn {
-    grid-area: delete;
+  .holiday-row__day {
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .holiday-row__weekday {
+    color: var(--color-text-dim);
+    font-size: 0.75rem;
+  }
+
+  .holiday-row__when:focus-within .holiday-row__day {
+    color: var(--color-accent);
+  }
+
+  .holiday-row__delete {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--color-text-dim);
+    font-size: 1.25rem;
+    line-height: 1;
   }
 
   .settings__rule {

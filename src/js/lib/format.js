@@ -95,3 +95,9 @@ export function formatDateRange(from, to) {
 
   return `${month(from)} ${day(from)} – ${month(to)} ${day(to)}`;
 }
+
+/** "2026-11-26" -> "Nov 26" @param {string} key */
+export const shortDate = (key) => parseDateKey(key).toLocaleDateString(LOCALE, { month: "short", day: "numeric" });
+
+/** "2026-11-26" -> "Thu" @param {string} key */
+export const weekdayShort = (key) => parseDateKey(key).toLocaleDateString(LOCALE, { weekday: "short" });
