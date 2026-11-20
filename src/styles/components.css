@@ -672,6 +672,15 @@
     list-style: none;
   }
 
+  .holiday-list__year {
+    padding: var(--space-3) 0 var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
   .holiday-list__empty {
     padding: var(--space-3);
     border: 1px dashed var(--color-border);

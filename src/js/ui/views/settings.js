@@ -1,7 +1,7 @@
 /** Settings tab: theme, target, grouping, rounding, company holidays, rounding check, backup, help. */
 import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
-import { backupFileName, holidaysIn } from "../../domain/backup.js";
+import { backupFileName } from "../../domain/backup.js";
 import { addDays, isDateKey } from "../../domain/dates.js";
 import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
@@ -108,7 +108,6 @@ export function mountSettings() {
 
   const view = state({
     holidaySummary: "",
-    holidayYear: "",
     holidayRev: 0,
     copyLabel: "",
     backupInfo: "",
@@ -204,88 +203,88 @@ export function mountSettings() {
   // Holidays are Holiday day records: this editor adds, edits and deletes
   // them directly, so History (which reads only day records) never depends
   // on a separate list.
-  const yearSelect = byId("holiday-year", HTMLSelectElement);
   const holidayList = byId("holiday-list");
 
-  /** Years to offer: any with holidays, plus this year and next. */
-  const holidayYears = () => {
-    const thisYear = Number(ui.today.slice(0, 4));
-    const years = new Set([String(thisYear), String(thisYear + 1)]);
+  /** This year's and later holidays; past years live in History. */
+  const upcomingHolidays = () => {
+    const from = `${ui.today.slice(0, 4)}-01-01`;
 
-    for (const d of data.days) if (d.status === "holiday") years.add(d.date.slice(0, 4));
-
-    return [...years].sort();
+    return data.days.filter((d) => d.status === "holiday" && d.date >= from).sort((a, b) => a.date.localeCompare(b.date));
   };
+
+  /** The year "Copy" copies from: the latest one listed, or this year. */
+  const latestHolidayYear = () => upcomingHolidays().at(-1)?.date.slice(0, 4) ?? ui.today.slice(0, 4);
+
+  /** @param {import("../../domain/types.js").Day} d */
+  const holidayRow = (d) =>
+    html`<li class="holiday-row">
+      <label class="holiday-row__when">
+        <span class="holiday-row__day">${shortDate(d.date)}</span>
+        <span class="holiday-row__weekday">${weekdayShort(d.date)}</span>
+        <!-- Invisible native picker over the date text: tap the date to change it. -->
+        <input
+          class="holiday-row__picker"
+          type="date"
+          value="${d.date}"
+          data-holiday-date="${d.date}"
+          aria-label="Date of ${d.note ?? "holiday"}"
+        />
+      </label>
+      <input
+        class="holiday-row__name"
+        type="text"
+        value="${d.note ?? ""}"
+        data-holiday-name="${d.date}"
+        placeholder="Name"
+        autocomplete="off"
+        aria-label="Holiday name"
+      />
+      <button
+        type="button"
+        class="holiday-row__delete"
+        data-action="delete-holiday"
+        data-date="${d.date}"
+        aria-label="Delete ${d.note ?? d.date}"
+      >
+        ×
+      </button>
+    </li>`;
 
   group.add(
     effect(() => {
-      const { days, loaded } = data;
-      const year = view.holidayYear || ui.today.slice(0, 4);
+      const { loaded } = data;
 
       view.holidayRev; // re-render after a rejected edit, to put the old value back
 
       if (!loaded) return;
 
-      render(yearSelect, html`${holidayYears().map((y) => html`<option value="${y}">${y}</option>`)}`);
-      yearSelect.value = year;
+      const list = upcomingHolidays();
 
-      const list = holidaysIn(days, year);
+      /** @type {Map<string, import("../../domain/types.js").Day[]>} */
+      const byYear = new Map();
+
+      for (const d of list) byYear.set(d.date.slice(0, 4), [...(byYear.get(d.date.slice(0, 4)) ?? []), d]);
 
       render(
         holidayList,
         list.length
-          ? html`${list.map(
-              (d) =>
-                html`<li class="holiday-row">
-                  <label class="holiday-row__when">
-                    <span class="holiday-row__day">${shortDate(d.date)}</span>
-                    <span class="holiday-row__weekday">${weekdayShort(d.date)}</span>
-                    <!-- Invisible native picker over the date text: tap the date to change it. -->
-                    <input
-                      class="holiday-row__picker"
-                      type="date"
-                      value="${d.date}"
-                      data-holiday-date="${d.date}"
-                      aria-label="Date of ${d.note ?? "holiday"}"
-                    />
-                  </label>
-                  <input
-                    class="holiday-row__name"
-                    type="text"
-                    value="${d.note ?? ""}"
-                    data-holiday-name="${d.date}"
-                    placeholder="Name"
-                    autocomplete="off"
-                    aria-label="Holiday name"
-                  />
-                  <button
-                    type="button"
-                    class="holiday-row__delete"
-                    data-action="delete-holiday"
-                    data-date="${d.date}"
-                    aria-label="Delete ${d.note ?? d.date}"
-                  >
-                    ×
-                  </button>
-                </li>`,
+          ? html`${[...byYear.entries()].map(
+              ([year, items]) =>
+                html`<li class="holiday-list__year" aria-hidden="true">${year}</li>
+                  ${items.map(holidayRow)}`,
             )}`
-          : html`<li class="holiday-list__empty">No holidays for ${year} yet.</li>`,
+          : html`<li class="holiday-list__empty">No upcoming holidays yet.</li>`,
       );
 
-      const nextYear = String(Number(year) + 1);
+      const fromYear = latestHolidayYear();
 
-      view.copyLabel = list.length ? `Copy to ${nextYear}` : "";
+      view.copyLabel = list.length ? `Copy to ${Number(fromYear) + 1}` : "";
 
-      const all = days.filter((d) => d.status === "holiday");
-      const next = all.filter((d) => d.date >= ui.today).sort((a, b) => a.date.localeCompare(b.date))[0];
+      const next = list.find((d) => d.date >= ui.today);
 
       view.holidaySummary = next ? `Next: ${next.note ?? "holiday"}, ${formatDay(next.date)}.` : "";
     }),
   );
-
-  const onYearChange = () => {
-    view.holidayYear = yearSelect.value;
-  };
 
   /** @param {Event} event */
   const onHolidayChange = (event) => {
@@ -306,27 +305,20 @@ export function mountSettings() {
     if (error) {
       toast(error);
       view.holidayRev++;
-    } else if (holidayDate && el.value.slice(0, 4) !== view.holidayYear) {
-      view.holidayYear = el.value.slice(0, 4);
     }
   };
 
-  yearSelect.addEventListener("change", onYearChange);
   holidayList.addEventListener("change", onHolidayChange);
+  group.add(() => holidayList.removeEventListener("change", onHolidayChange));
 
-  group.add(() => {
-    yearSelect.removeEventListener("change", onYearChange);
-    holidayList.removeEventListener("change", onHolidayChange);
-  });
-
-  /** First date in `year` (from today, for this year) with nothing logged. */
-  const freeDateIn = (/** @type {string} */ year) => {
+  /** First date from today with nothing logged. */
+  const nextFreeDate = () => {
     const taken = new Set(data.days.filter((d) => !isBlankDay(d)).map((d) => d.date));
-    let date = year === ui.today.slice(0, 4) ? ui.today : `${year}-01-01`;
+    let date = ui.today;
 
-    while (date.startsWith(year) && taken.has(date)) date = addDays(date, 1);
+    while (taken.has(date)) date = addDays(date, 1);
 
-    return date.startsWith(year) ? date : null;
+    return date;
   };
 
   group.add(
@@ -444,15 +436,7 @@ export function mountSettings() {
     roundIn: (el) => updateSettings({ roundIn: { ...data.settings.roundIn, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
     roundOut: (el) => updateSettings({ roundOut: { ...data.settings.roundOut, mode: /** @type {RoundingMode} */ (el.dataset.value) } }),
     "add-holiday": () => {
-      const year = view.holidayYear || ui.today.slice(0, 4);
-      const date = freeDateIn(year);
-
-      if (!date) {
-        toast(`Every date in ${year} is taken.`);
-
-        return;
-      }
-
+      const date = nextFreeDate();
       const error = addHoliday(date, "");
 
       if (error) {
@@ -475,11 +459,9 @@ export function mountSettings() {
       toast("Holiday removed");
     },
     "copy-holidays": () => {
-      const year = view.holidayYear || ui.today.slice(0, 4);
+      const year = latestHolidayYear();
       const nextYear = String(Number(year) + 1);
       const added = copyHolidaysToYear(year, nextYear);
-
-      view.holidayYear = nextYear;
 
       toast(
         added ? `Copied ${plural(added, "holiday")} to ${nextYear}. Adjust any dates that move.` : `${nextYear} already has these dates.`,

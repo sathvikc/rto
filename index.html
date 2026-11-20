@@ -164,13 +164,10 @@
         </section>
 
         <section class="card settings__group" aria-labelledby="s-holidays-heading">
-          <div class="cluster cluster--between">
-            <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
-            <select id="holiday-year" class="select" aria-label="Holiday year"></select>
-          </div>
-          <p class="field__hint">Holidays are saved as days, so History keeps them even when you change next year's list.</p>
+          <h3 id="s-holidays-heading" class="settings__heading">Company holidays</h3>
+          <p class="field__hint">This year and later. Holidays are saved as days, so past ones stay in History.</p>
           <ul id="holiday-list" class="holiday-list" aria-labelledby="s-holidays-heading"></ul>
-          <div class="cluster cluster--between">
+          <div class="cluster">
             <button type="button" class="btn btn--fit" data-action="copy-holidays" data-show="copyLabel" data-bind="copyLabel"></button>
             <button type="button" class="btn btn--fit btn--primary push" data-action="add-holiday">+ Add holiday</button>
           </div>
