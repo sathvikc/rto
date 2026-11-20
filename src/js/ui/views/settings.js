@@ -1,8 +1,9 @@
 /** Settings tab: theme, target, grouping, rounding, company holidays, rounding check, backup, help. */
 import { bindDom, effect, state } from "lume-js";
 import { createCleanupGroup } from "lume-js/addons";
+import { show } from "lume-js/handlers";
 import { backupFileName } from "../../domain/backup.js";
-import { holidayDateOf, holidaysFrom } from "../../domain/holidays.js";
+import { holidayDateOf, holidaysFrom, holidaysIn } from "../../domain/holidays.js";
 import { addDays, isDateKey } from "../../domain/dates.js";
 import { isBlankDay } from "../../domain/days.js";
 import { STEP_MINUTES } from "../../domain/constants.js";
@@ -209,11 +210,17 @@ export function mountSettings() {
   /** This year's and later holidays (by real date); past years live in History. */
   const upcomingHolidays = () => holidaysFrom(data.days, `${ui.today.slice(0, 4)}-01-01`);
 
-  /** The year "Copy" copies from: the latest one listed, or this year. */
-  const latestHolidayYear = () => {
-    const last = upcomingHolidays().at(-1);
+  /**
+   * Copy is offered only once a new year has started and it has no
+   * holidays yet: last year's list, into this year. Never ahead of time,
+   * so it can't be pressed by accident.
+   * @returns {{ from: string, to: string } | null}
+   */
+  const copyOffer = () => {
+    const to = ui.today.slice(0, 4);
+    const from = String(Number(to) - 1);
 
-    return last ? holidayDateOf(last).slice(0, 4) : ui.today.slice(0, 4);
+    return holidaysIn(data.days, to).length === 0 && holidaysIn(data.days, from).length > 0 ? { from, to } : null;
   };
 
   /** @param {import("../../domain/types.js").Day} d */
@@ -284,9 +291,9 @@ export function mountSettings() {
           : html`<li class="holiday-list__empty">No upcoming holidays yet.</li>`,
       );
 
-      const fromYear = latestHolidayYear();
+      const offer = copyOffer();
 
-      view.copyLabel = list.length ? `Copy to ${Number(fromYear) + 1}` : "";
+      view.copyLabel = offer ? `Copy ${offer.from} holidays to ${offer.to}` : "";
 
       const next = list.find((d) => d.date >= ui.today);
 
@@ -469,13 +476,13 @@ export function mountSettings() {
       toast("Holiday removed");
     },
     "copy-holidays": () => {
-      const year = latestHolidayYear();
-      const nextYear = String(Number(year) + 1);
-      const added = copyHolidaysToYear(year, nextYear);
+      const offer = copyOffer();
 
-      toast(
-        added ? `Copied ${plural(added, "holiday")} to ${nextYear}. Adjust any dates that move.` : `${nextYear} already has these dates.`,
-      );
+      if (!offer) return;
+
+      const added = copyHolidaysToYear(offer.from, offer.to);
+
+      toast(added ? `Copied ${plural(added, "holiday")} to ${offer.to}. Adjust any dates that move.` : `Nothing to copy.`);
     },
     export: exportBackup,
     import: () => importInput.click(),
@@ -488,7 +495,7 @@ export function mountSettings() {
     },
   });
 
-  group.add(bindDom(page, view));
+  group.add(bindDom(page, view, { handlers: [show] }));
 
   return () => group.dispose();
 }
